@@ -64,7 +64,7 @@ class UserController extends Controller
             $path = $file->store('profile_images', 'public');
 
             $backendUrl = env('STORAGE_URL');
-            $imageUrl = $backendUrl . '/'.env('STORAGE_FOLDER', 'storage').'/' . $path;
+            $imageUrl = $backendUrl . '/' . $path;
             
             $currentUser->avatar = $imageUrl;
             $currentUser->save();
