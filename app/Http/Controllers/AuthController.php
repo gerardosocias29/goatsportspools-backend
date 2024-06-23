@@ -24,10 +24,11 @@ class AuthController extends Controller
             'city' => 'required|string|max:255',
             'state' => 'required|string|max:255',
             'zipcode' => 'required|string|max:255',
+            'username' => 'required|string|max:255',
         ]);
     
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json(["status" => false, "message" => 'Please fill-up the required fields.', "errors" => $validator->errors()]);
         }
     
         $user = User::create([
@@ -41,6 +42,7 @@ class AuthController extends Controller
             'city' => $request->city,
             'state' => $request->state,
             'zipcode' => $request->zipcode,
+            'username' => $request->username,
             'role_id' => 2
         ]);
 
