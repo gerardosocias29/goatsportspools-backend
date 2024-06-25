@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserController extends Controller
 {   
@@ -73,5 +74,33 @@ class UserController extends Controller
         }
 
         return response()->json(['message' => 'No file uploaded', "status" => false]);
+    }
+
+    public function getUserDetails(Request $request)
+    {
+        // Retrieve user details from the request attributes (set by the middleware)
+        $user = $request->attributes->get('user');
+
+        // Return user details as JSON
+        $user = User::updateOrCreate(
+            [ 'email' => $user->email, "clerk_id" => $user->id ],
+            [
+                'name' => $user->full_name,
+                'phone' => $user->phone,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'username' => $user->username,
+                'avatar' => $user->avatar,
+                'role_id' => 2,
+            ]
+        );
+
+        $token = JWTAuth::fromUser($user);
+
+        return response()->json(['token' => $token]);
+    }
+
+    public function getToken(Request $request) {
+        return response()->json(["user" => $request->avatar]);
     }
 }

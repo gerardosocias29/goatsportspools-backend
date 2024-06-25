@@ -20,3 +20,8 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/update_image', [UserController::class, 'update_image']);
     });
 });
+
+Route::group(['middleware' => 'verify.jwt.jwks'], function () {
+    Route::get('/user-details', [UserController::class, 'getUserDetails']);
+    Route::post('/getToken', [UserController::class, 'getToken']);
+});
