@@ -87,7 +87,7 @@ class UserController extends Controller
             $newUser->email = $user->email;
             $newUser->role_id = 3;
             $newUser->clerk_id = $user->id;
-            $newUser->name = $user->name;
+            $newUser->name = $user->full_name;
             $newUser->phone = $user->phone;
             $newUser->first_name = $user->first_name;
             $newUser->last_name = $user->last_name;
