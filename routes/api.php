@@ -21,11 +21,10 @@ Route::group(['middleware' => 'auth:api'], function () {
     });
 
 
-
-    Route::get('/users', [UserController::class, 'getUsers']);
-
-
-
+    Route::group(['prefix' => 'users'], function () {
+        Route::get('/', [UserController::class, 'getUsers']);
+        Route::get('/card-data', [UserController::class, 'getCardData']);
+    });
 
 });
 

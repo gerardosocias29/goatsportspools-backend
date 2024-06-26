@@ -81,18 +81,21 @@ class UserController extends Controller
         // Retrieve user details from the request attributes (set by the middleware)
         $user = $request->attributes->get('user');
         // Return user details as JSON
-        $newUser = User::updateOrCreate(
-            [ 'email' => $user->email, "clerk_id" => $user->id ],
-            [
-                'name' => $user->full_name,
-                'phone' => $user->phone,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'username' => $user->username,
-                'avatar' => $user->avatar,
-                'role_id' => 2,
-            ]
-        );
+        $newUser = User::where('email', $user->email)->where('clerk_id', $user->id)->first();
+        if(!$newUser){
+            $newUser = new User();
+            $newUser->email = $user->email;
+            $newUser->role_id = 3;
+            $newUser->clerk_id = $user->clerk_id;
+            $newUser->name = $user->name;
+            $newUser->phone = $user->phone;
+            $newUser->first_name = $user->first_name;
+            $newUser->last_name = $user->last_name;
+            $newUser->username = $user->username;
+            $newUser->avatar = $user->avatar;
+
+            $newUser->save();
+        }
 
         $token = JWTAuth::fromUser($newUser);
 
@@ -125,5 +128,14 @@ class UserController extends Controller
             });
         }
         return $query;
+    }
+
+    public function getCardData() { 
+        $cardData = [
+            "active_users" => User::where('role_id', 3)->count(),
+            "active_league_admin" => User::where('role_id', 2)->count()
+        ];
+
+        return response()->json($cardData);
     }
 }
