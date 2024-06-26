@@ -80,9 +80,8 @@ class UserController extends Controller
     {
         // Retrieve user details from the request attributes (set by the middleware)
         $user = $request->attributes->get('user');
-
         // Return user details as JSON
-        $user = User::updateOrCreate(
+        $newUser = User::updateOrCreate(
             [ 'email' => $user->email, "clerk_id" => $user->id ],
             [
                 'name' => $user->full_name,
@@ -95,12 +94,36 @@ class UserController extends Controller
             ]
         );
 
-        $token = JWTAuth::fromUser($user);
+        $token = JWTAuth::fromUser($newUser);
 
         return response()->json(['token' => $token]);
     }
 
     public function getToken(Request $request) {
         return response()->json(["user" => $request->avatar]);
+    }
+
+    public function getUsers(Request $request) {
+        $filter = json_decode($request->filter);
+        $usersQuery = User::query();
+
+        $usersQuery = $this->applyFilters($usersQuery, $filter);
+        $users = $usersQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
+        
+        return response($users);
+    }
+    
+
+    private function applyFilters($query, $filter) {
+        if (!empty($filter->filters->global->value)) {
+            $query->where(function (Builder $query) use ($filter) {
+                $value = '%' . $filter->filters->global->value . '%';
+                $user = new User();
+                foreach ($user->getFillable() as $column) {
+                    $query->orWhere($column, 'LIKE', $value);
+                }
+            });
+        }
+        return $query;
     }
 }

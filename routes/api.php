@@ -19,6 +19,14 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/update_password', [UserController::class, 'update_password']);
         Route::post('/update_image', [UserController::class, 'update_image']);
     });
+
+
+
+    Route::get('/users', [UserController::class, 'getUsers']);
+
+
+
+
 });
 
 Route::group(['middleware' => 'verify.jwt.jwks'], function () {
