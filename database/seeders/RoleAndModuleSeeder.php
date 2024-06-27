@@ -22,6 +22,7 @@ class RoleAndModuleSeeder extends Seeder
             ['name' => 'Dashboard', 'page' => 'dashboard', 'icon' => 'icon-dashboard'],
             ['name' => 'NFL Pool', 'page' => 'nfl', 'icon' => 'icon-nfl'],
             ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
+            ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
         ];
 
         // Create the modules and store the IDs
@@ -41,12 +42,12 @@ class RoleAndModuleSeeder extends Seeder
             [
                 'name' => 'League Admin',
                 'description' => 'Manages league settings and user permissions.',
-                'allowed_modules' => [1] // Assign specific module IDs
+                'allowed_modules' => [1,4] // Assign specific module IDs
             ],
             [
                 'name' => 'Normal User',
                 'description' => 'Has access to participate in NFL pool and view scores.',
-                'allowed_modules' => [1] // Assign specific module IDs
+                'allowed_modules' => [1,4] // Assign specific module IDs
             ]
         ];
 
