@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use App\Models\{User, Role, RoleModule};
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserController extends Controller
 {   
@@ -16,6 +17,10 @@ class UserController extends Controller
 
     public function me_user() {
         $user = Auth::user();
+        $roles = Role::where('id', $user->role_id)->first();
+        $modules = RoleModule::whereIn('id', $roles->allowed_modules)->select('name', 'page', 'icon', 'id')->get();
+
+        $user->modules = $modules;
         return response()->json(["status" => true, "user" => $user]);
     }
 
@@ -81,7 +86,7 @@ class UserController extends Controller
         // Retrieve user details from the request attributes (set by the middleware)
         $user = $request->attributes->get('user');
         // Return user details as JSON
-        $newUser = User::where('email', $user->email)->where('clerk_id', $user->id)->first();
+        $newUser = User::with(['role'])->where('email', $user->email)->where('clerk_id', $user->id)->first();
         if(!$newUser){
             $newUser = new User();
             $newUser->email = $user->email;
@@ -99,7 +104,7 @@ class UserController extends Controller
 
         $token = JWTAuth::fromUser($newUser);
 
-        return response()->json(['token' => $token]);
+        return response()->json(['token' => $token, 'user' => $newUser]);
     }
 
     public function getToken(Request $request) {
@@ -108,7 +113,9 @@ class UserController extends Controller
 
     public function getUsers(Request $request) {
         $filter = json_decode($request->filter);
-        $usersQuery = User::query();
+        $usersQuery = User::with(['role' => function($query) {
+            $query->select('id', 'name');
+        }])->where('role_id', '!=', 1);
 
         $usersQuery = $this->applyFilters($usersQuery, $filter);
         $users = $usersQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
@@ -132,10 +139,28 @@ class UserController extends Controller
 
     public function getCardData() { 
         $cardData = [
-            "active_users" => User::where('role_id', 3)->count(),
+            "active_users" => User::where('role_id', '!=', 1)->count(),
             "active_league_admin" => User::where('role_id', 2)->count()
         ];
 
         return response()->json($cardData);
+    }
+
+    public function updateRole(Request $request, $user_id) {
+        // check loggedIn user permissions
+        $currentUser = Auth::user()->load(['role']);
+        if($currentUser->role->id != 1){
+            return response(["status" => false, "message" => "You don't have enough permission to update!"]);
+        }
+
+        $user = User::where('id', $user_id)->first();
+        if(!$user){
+            return response(["status" => false, "message" => "User not found!"]);
+        }
+
+        $user->role_id = 2;
+        $user->update();
+
+        return response(["status" => true, "message" => "User role updated successfully to League Admin!"]);
     }
 }
