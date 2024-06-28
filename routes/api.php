@@ -3,6 +3,16 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{AuthController, UserController, LeagueController};
+use Illuminate\Support\Facades\Artisan;
+
+Route::get('/seed-database', function () {
+    try {
+        Artisan::call('db:seed', ['--class' => 'RoleAndModuleSeeder']);
+        return response()->json(['message' => 'Database roles and modules seeded successfully']);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Database seeding failed', 'message' => $e->getMessage()], 500);
+    }
+});
 
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
