@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('description')->nullable();
             $table->integer('user_id');
             $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->string('password');
         });
     }
 

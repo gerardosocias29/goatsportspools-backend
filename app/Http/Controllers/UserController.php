@@ -111,6 +111,11 @@ class UserController extends Controller
         return response()->json(["user" => $request->avatar]);
     }
 
+    public function getLeagueAdmins() {
+        $users = User::select('id','name','avatar','username','email')->where('role_id', '=', 2)->get();
+        return response($users);
+    }
+
     public function getUsers(Request $request) {
         $filter = json_decode($request->filter);
         $usersQuery = User::with(['role' => function($query) {

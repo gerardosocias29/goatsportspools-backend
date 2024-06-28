@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, UserController};
+use App\Http\Controllers\{AuthController, UserController, LeagueController};
 
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
@@ -23,8 +23,17 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'users'], function () {
         Route::get('/', [UserController::class, 'getUsers']);
+        Route::get('/league-admins', [UserController::class, 'getLeagueAdmins']);
         Route::get('/card-data', [UserController::class, 'getCardData']);
         Route::post('/update-role/{user_id}', [UserController::class, 'updateRole']);
+    });
+
+    Route::group(['prefix' => 'leagues'], function () {
+        Route::get('/', [LeagueController::class, 'index']);
+        Route::post('/store', [LeagueController::class, 'store']);
+        Route::patch('/update/{league_id}', [LeagueController::class, 'update']);
+        Route::delete('/delete/{league_id}', [LeagueController::class, 'update']);
+
     });
 
 });
