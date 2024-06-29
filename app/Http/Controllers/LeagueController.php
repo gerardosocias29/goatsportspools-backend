@@ -2,25 +2,43 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\League;
+use App\Models\{League, LeagueParticipant};
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class LeagueController extends Controller
 {
+    public function totalLeaguesJoined() {
+        $userId = Auth::user()->id;
+
+        $totalLeaguesJoined = League::whereHas('participants', function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })->count();
+
+        return response(["status" => true, "leagues_joined" => $totalLeaguesJoined]);
+    }
+
     public function index(Request $request) {
+        $userId = Auth::user()->id;
+
         $filter = json_decode($request->filter);
         $leaguesQuery = League::with(['created_by' => function($query){
             $query->select('id', 'name');
         }]);
 
-        if (Auth::user()->role_id == 2) {
-            $leaguesQuery->where('user_id', Auth::user()->id);
-        }
+        // if (Auth::user()->role_id == 2) {
+        //     $leaguesQuery->where('user_id', Auth::user()->id);
+        // }
 
         $leaguesQuery = $this->applyFilters($leaguesQuery, $filter);
         $leagues = $leaguesQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
+
+        $leagues->getCollection()->transform(function ($league) use ($userId) {
+            $league->has_joined = $league->participants()->where('user_id', $userId)->exists();
+            return $league;
+        });
 
         return response()->json($leagues);
     }
@@ -87,4 +105,31 @@ class LeagueController extends Controller
         $league->delete();
         return response()->json(['message' => 'League deleted successfully']);
     }
+
+    public function join(Request $request) {
+        $validatedData = $request->validate([
+            'password' => 'required',
+            'league_id' => 'required|exists:leagues,id',
+        ]);
+
+        $password = $validatedData['password'];
+        $leagueId = $validatedData['league_id'];
+
+        $league = League::findOrFail($leagueId);
+
+        if (!Hash::check($password, $league->password)) {
+            return response()->json(["status" => false, 'message' => 'Incorrect password']);
+        }
+
+        // Associate the authenticated user with the league
+        $userId = Auth::user()->id;
+
+        $leagueParticipant = new LeagueParticipant();
+        $leagueParticipant->league_id = $leagueId;
+        $leagueParticipant->user_id = $userId;
+        $leagueParticipant->save();
+
+        return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
+    }
+
 }

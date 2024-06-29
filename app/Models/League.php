@@ -25,4 +25,8 @@ class League extends Model
     public function created_by() {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function participants() {
+        return $this->belongsToMany(User::class, 'league_participants');
+    }
 }

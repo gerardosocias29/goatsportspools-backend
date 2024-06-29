@@ -40,7 +40,9 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'leagues'], function () {
         Route::get('/', [LeagueController::class, 'index']);
+        Route::get('/leagues-joined', [LeagueController::class, 'totalLeaguesJoined']);
         Route::post('/store', [LeagueController::class, 'store']);
+        Route::post('/join', [LeagueController::class, 'join']);
         Route::patch('/update/{league_id}', [LeagueController::class, 'update']);
         Route::delete('/delete/{league_id}', [LeagueController::class, 'update']);
 
