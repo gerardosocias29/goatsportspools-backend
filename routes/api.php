@@ -14,6 +14,15 @@ Route::get('/seed-database', function () {
     }
 });
 
+Route::get('/migrate', function () {
+    try {
+        Artisan::call('migrate');
+        return response()->json(['message' => 'Database migrated successfully']);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Database migrate failed', 'message' => $e->getMessage()], 500);
+    }
+});
+
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('refresh', [AuthController::class, 'refresh']);
