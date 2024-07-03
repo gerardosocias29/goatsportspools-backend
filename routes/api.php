@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, UserController, LeagueController};
+use App\Http\Controllers\{AuthController, UserController, LeagueController, GameController};
 use Illuminate\Support\Facades\Artisan;
 
 Route::get('/seed-database', function () {
@@ -55,6 +55,10 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::patch('/update/{league_id}', [LeagueController::class, 'update']);
         Route::delete('/delete/{league_id}', [LeagueController::class, 'update']);
 
+    });
+
+    Route::group(['prefix' => 'games'], function () {
+        Route::get('/', [GameController::class, 'games']);
     });
 
 });

@@ -65,10 +65,15 @@ class User extends Authenticatable implements JWTSubject
     ];
 
     public function role() {
-        return $this->belongsTo(Role::class, 'role_id');
+        return $this->belongsTo(Role::class, 'role_id')->whereNull('parent_id');
     }
 
     public function leagues() {
         return $this->belongsToMany(League::class, 'league_participants');
+    }
+
+    public function bets()
+    {
+        return $this->hasMany(Bet::class);
     }
 }

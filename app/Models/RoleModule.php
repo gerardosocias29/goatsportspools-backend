@@ -13,4 +13,8 @@ class RoleModule extends Model
         'name',
         'icon',
     ];
+
+    public function sub_modules() {
+        return $this->hasMany(RoleModule::class, 'parent_id', 'id');
+    }
 }

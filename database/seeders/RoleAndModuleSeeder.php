@@ -20,9 +20,10 @@ class RoleAndModuleSeeder extends Seeder
         // Define role modules first
         $modules = [
             ['name' => 'Dashboard', 'page' => 'dashboard', 'icon' => 'icon-dashboard'],
-            ['name' => 'NFL Pool', 'page' => 'nfl', 'icon' => 'icon-nfl'],
+            ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
             ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
             ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
+            ['name' => 'NFL', 'page' => 'games/nfl', 'icon' => 'icon-nfl', 'parent_id' => 2],
         ];
 
         // Create the modules and store the IDs

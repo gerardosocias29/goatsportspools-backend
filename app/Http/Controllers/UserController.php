@@ -18,7 +18,7 @@ class UserController extends Controller
     public function me_user() {
         $user = Auth::user();
         $roles = Role::where('id', $user->role_id)->first();
-        $modules = RoleModule::whereIn('id', $roles->allowed_modules)->select('name', 'page', 'icon', 'id')->get();
+        $modules = RoleModule::with(['sub_modules'])->whereIn('id', $roles->allowed_modules)->select('name', 'page', 'icon', 'id', 'parent_id')->get();
 
         $user->modules = $modules;
         return response()->json(["status" => true, "user" => $user]);
@@ -86,7 +86,7 @@ class UserController extends Controller
         // Retrieve user details from the request attributes (set by the middleware)
         $user = $request->attributes->get('user');
         // Return user details as JSON
-        $newUser = User::with(['role'])->where('email', $user->email)->where('clerk_id', $user->id)->first();
+        $newUser = User::with(['role.sub_modules'])->where('email', $user->email)->where('clerk_id', $user->id)->first();
         if(!$newUser){
             $newUser = new User();
             $newUser->email = $user->email;

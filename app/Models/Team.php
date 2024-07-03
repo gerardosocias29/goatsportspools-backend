@@ -16,4 +16,14 @@ class Team extends Model
         'conference',
         'image_url'
     ];
+
+    public function homeGames()
+    {
+        return $this->hasMany(Game::class, 'home_team_id');
+    }
+
+    public function visitorGames()
+    {
+        return $this->hasMany(Game::class, 'visitor_team_id');
+    }
 }
