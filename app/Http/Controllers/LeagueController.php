@@ -20,6 +20,16 @@ class LeagueController extends Controller
         return response(["status" => true, "leagues_joined" => $totalLeaguesJoined]);
     }
 
+    public function joinedLeagues() {
+        $userId = Auth::user()->id;
+
+        $leaguesJoined = League::whereHas('participants', function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })->get();
+
+        return response(["status" => true, "leagues_joined" => $leaguesJoined]);
+    }
+
     public function index(Request $request) {
         $userId = Auth::user()->id;
 
