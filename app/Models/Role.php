@@ -22,4 +22,8 @@ class Role extends Model
     public function allowed_modules() {
         return $this->hasMany(RoleModule::class, 'allowed_modules'); // i want to where allowed_modules in RoleModule.id
     }
+
+    public function sub_modules() {
+        return $this->hasMany(RoleModule::class, 'parent_id', 'id');
+    }
 }
