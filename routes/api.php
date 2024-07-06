@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, UserController, LeagueController, GameController};
+use App\Http\Controllers\{AuthController, UserController, LeagueController, GameController, BetController};
 use Illuminate\Support\Facades\Artisan;
 
 Route::get('/seed-database', function () {
@@ -60,6 +60,10 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'games'], function () {
         Route::get('/', [GameController::class, 'games']);
+    });
+
+    Route::group(['prefix' => 'bets'], function () {
+        Route::post('/wager', [BetController::class, 'store']);
     });
 
 });

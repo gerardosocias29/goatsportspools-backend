@@ -16,7 +16,7 @@ class WagerTypesSeeder extends Seeder
         WagerType::truncate();
 
         $wagerTypes = [
-            ["name" => "Straight", "description" => "Straight Wagers", "no_of_teams" => 1],
+            ["name" => "Spread", "description" => "Spread Wagers", "no_of_teams" => 1],
             ["name" => "TotalPoints", "description" => "Total Points Wagers", "no_of_teams" => 1],
             ["name" => "MoneyLine", "description" => "Money Line Wagers", "no_of_teams" => 1],
             ["name" => "2TP", "description" => "Two Team Parlay", "no_of_teams" => 2],

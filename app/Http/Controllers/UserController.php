@@ -100,6 +100,15 @@ class UserController extends Controller
             $newUser->avatar = $user->avatar ?? '';
 
             $newUser->save();
+        } else {
+            $newUser->name = $user->full_name ?? '';
+            $newUser->phone = $user->phone ?? '';
+            $newUser->first_name = $user->first_name ?? '';
+            $newUser->last_name = $user->last_name ?? '';
+            $newUser->username = $user->username ?? '';
+            $newUser->avatar = $user->avatar ?? '';
+
+            $newUser->update();
         }
 
         $token = JWTAuth::fromUser($newUser);
