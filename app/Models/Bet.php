@@ -11,8 +11,8 @@ class Bet extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'pool_id', 'league_id', 'wager_type_id', 'odd_id', 
-        'team_pick', 'picked_odd', 'wager_amount', 'wager_result'
+        'game_id', 'user_id', 'pool_id', 'league_id', 'wager_type_id', 'odd_id', 
+        'team_id', 'picked_odd', 'wager_amount', 'wager_result', 'bet_type', 'ticket_number'
     ];
 
     public function user()

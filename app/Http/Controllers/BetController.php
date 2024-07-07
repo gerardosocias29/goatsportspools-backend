@@ -2,70 +2,41 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Bet;
+use App\Models\{Bet, Game};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BetController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $user = Auth::user();
-
         if(count($request->bets) < 1){
             return response()->json(["status" => false, "message" => "Empty Bets."]);
         }
 
-        
-    }
+        foreach ($request->bets as $betData) {
+            $game = Game::where('id', $betData['game_id'])->first();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Bet $bet)
-    {
-        //
-    }
+            $bet = new Bet();
+            $bet->game_id = $betData['game_id'];
+            $bet->user_id = $user->id;
+            $bet->pool_id = $betData['pool_id'];
+            $bet->league_id = $betData['league_id'];
+            $bet->wager_type_id = $betData['wager_type_id'];
+            $bet->odd_id = $betData['odd_id'];
+            $bet->team_id = $betData['team_id'] ?? 0;
+            $bet->picked_odd = $betData['pick_odd'];
+            $bet->wager_amount = $betData['wager_amount'];
+            $bet->wager_result = 'pending';
+            $bet->wager_win_amount = $betData['wager_amount'] * (100 / $game->standard_odd);
+            $bet->bet_type = $betData['bet_type'];
+            $bet->save();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Bet $bet)
-    {
-        //
-    }
+            $bet->ticket_number = \Carbon\Carbon::now()->format('ym').str_pad($bet->id, 6, "0", STR_PAD_LEFT);
+            $bet->update();
+        }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Bet $bet)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Bet $bet)
-    {
-        //
+        return response()->json(["status" => true, "message" => "Bets placed successfully."]);
     }
 }
