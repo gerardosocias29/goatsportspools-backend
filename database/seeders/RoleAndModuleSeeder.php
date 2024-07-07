@@ -23,6 +23,9 @@ class RoleAndModuleSeeder extends Seeder
             ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
             ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
             ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
+            ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history'],
+            ['name' => 'Manage Games', 'page' => 'game-management', 'icon' => 'icon-game-management'],
+
             ['name' => 'NFL', 'page' => 'games/nfl', 'icon' => 'icon-nfl', 'parent_id' => 2],
         ];
 
@@ -30,7 +33,9 @@ class RoleAndModuleSeeder extends Seeder
         $moduleIds = [];
         foreach ($modules as $module) {
             $createdModule = RoleModule::create($module);
-            $moduleIds[] = $createdModule->id;
+            if(empty($createdModule->parent_id)){
+                $moduleIds[] = $createdModule->id;
+            }
         }
 
         // Define roles with their respective descriptions and allowed module IDs
@@ -43,12 +48,12 @@ class RoleAndModuleSeeder extends Seeder
             [
                 'name' => 'League Admin',
                 'description' => 'Manages league settings and user permissions.',
-                'allowed_modules' => [1,2,4] // Assign specific module IDs
+                'allowed_modules' => [1,2,4,5] // Assign specific module IDs
             ],
             [
                 'name' => 'Normal User',
                 'description' => 'Has access to participate in NFL pool and view scores.',
-                'allowed_modules' => [1,2,4] // Assign specific module IDs
+                'allowed_modules' => [1,2,4,5] // Assign specific module IDs
             ]
         ];
 

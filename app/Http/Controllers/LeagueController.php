@@ -30,6 +30,14 @@ class LeagueController extends Controller
         return response(["status" => true, "leagues_joined" => $leaguesJoined]);
     }
 
+    public function getLeaguesCreatedCount() {
+        $user = Auth::user();
+        $leagueCreatedCount = League::where('user_id', $user->id)->count();
+
+        return response()->json(["status" => true, "leagues_created" => $leagueCreatedCount]);
+    }
+
+
     public function index(Request $request) {
         $userId = Auth::user()->id;
 
@@ -89,6 +97,12 @@ class LeagueController extends Controller
         }
 
         $league = League::create($validatedData);
+
+        $leagueParticipant = new LeagueParticipant();
+        $leagueParticipant->league_id = $league->id;
+        $leagueParticipant->user_id = Auth::user()->id;
+        $leagueParticipant->save();
+
         return response()->json(["status" => true, "message" => "League created successfully."]);
     }
 
