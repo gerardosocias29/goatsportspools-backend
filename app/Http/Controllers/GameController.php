@@ -33,4 +33,89 @@ class GameController extends Controller
         }
         return $query;
     }
+
+    public function announceWinner(Request $request) {
+        // Validate the request data
+        $request->validate([
+            'game_id' => 'required|exists:games,id',
+            'home_team_score' => 'required|integer',
+            'visitor_team_score' => 'required|integer',
+        ]);
+
+        // Retrieve the game and update the scores
+        $game = Game::find($request->game_id);
+        $game->home_team_score = $request->home_team_score;
+        $game->visitor_team_score = $request->visitor_team_score;
+        $game->update();
+
+        // Retrieve all bets for the game
+        $bets = Bet::where('game_id', $game->id)->get();
+
+        foreach ($bets as $bet) {
+            switch ($bet->wager_type_id) {
+                case 1: // Spread
+                    $spread = $bet->picked_odd; // Use picked_odd from the bet
+                    
+                    if ($bet->team_id == $game->home_team_id) {
+                        // Bet on the home team
+                        if (($game->home_team_score - $game->visitor_team_score) > $spread) {
+                            $bet->wager_result = 'win';
+                        } else {
+                            $bet->wager_result = 'lose';
+                        }
+                    } elseif ($bet->team_id == $game->visitor_team_id) {
+                        // Bet on the visitor team
+                        if (($game->visitor_team_score - $game->home_team_score) > $spread) {
+                            $bet->wager_result = 'win';
+                        } else {
+                            $bet->wager_result = 'lose';
+                        }
+                    }
+                    break;
+
+                case 2: // TotalPoints
+                    $totalPointsLine = $bet->picked_odd; // Use picked_odd from the bet
+                    $totalGameScore = $game->home_team_score + $game->visitor_team_score;
+
+                    if ($totalGameScore > $totalPointsLine) {
+                        // Bet on over
+                        if ($bet->team_id == $game->home_team_id || $bet->team_id == $game->visitor_team_id) {
+                            $bet->wager_result = 'win';
+                        } else {
+                            $bet->wager_result = 'lose';
+                        }
+                    } elseif ($totalGameScore < $totalPointsLine) {
+                        // Bet on under
+                        if ($bet->team_id == $game->home_team_id || $bet->team_id == $game->visitor_team_id) {
+                            $bet->wager_result = 'win';
+                        } else {
+                            $bet->wager_result = 'lose';
+                        }
+                    } else {
+                        // Total game score equals the total points line
+                        $bet->wager_result = 'push'; // or handle it according to your business rules
+                    }
+                    break;
+
+                case 3: // MoneyLine
+                    if ($bet->team_id == $game->home_team_id && $game->home_team_score > $game->visitor_team_score) {
+                        $bet->wager_result = 'win';
+                    } elseif ($bet->team_id == $game->visitor_team_id && $game->visitor_team_score > $game->home_team_score) {
+                        $bet->wager_result = 'win';
+                    } else {
+                        $bet->wager_result = 'lose';
+                    }
+                    break;
+
+                default:
+                    // Handle other wager types if needed
+                    break;
+            }
+
+            $bet->save();
+        }
+
+        return response()->json(['message' => 'Winner announced and bets updated successfully.']);
+    }
+
 }
