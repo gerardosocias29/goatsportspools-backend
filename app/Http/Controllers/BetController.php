@@ -5,9 +5,35 @@ namespace App\Http\Controllers;
 use App\Models\{Bet, Game};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class BetController extends Controller
 {
+    public function index(Request $request) {
+        $userId = Auth::user()->id;
+
+        $filter = json_decode($request->filter);
+        $betsQuery = Bet::with(['wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team']);
+
+        $betsQuery = $this->applyFilters($betsQuery->orderBy('id', 'DESC'), $filter);
+        $bets = $betsQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
+
+        return response()->json($bets);
+    }
+
+    private function applyFilters($query, $filter) {
+        if (!empty($filter->filters->global->value)) {
+            $query->where(function (Builder $query) use ($filter) {
+                $value = '%' . $filter->filters->global->value . '%';
+                $bet = new Bet();
+                foreach ($bet->getFillable() as $column) {
+                    $query->orWhere($column, 'LIKE', $value);
+                }
+            });
+        }
+        return $query;
+    }
+
     public function store(Request $request)
     {
         $user = Auth::user();

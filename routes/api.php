@@ -64,6 +64,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     });
 
     Route::group(['prefix' => 'bets'], function () {
+        Route::get('/', [BetController::class, 'index']);
         Route::post('/wager', [BetController::class, 'store']);
     });
 

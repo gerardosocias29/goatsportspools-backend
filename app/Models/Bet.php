@@ -15,6 +15,11 @@ class Bet extends Model
         'team_id', 'picked_odd', 'wager_amount', 'wager_result', 'bet_type', 'ticket_number'
     ];
 
+    public function game()
+    {
+        return $this->belongsTo(Game::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -38,5 +43,10 @@ class Bet extends Model
     public function odd()
     {
         return $this->belongsTo(Odd::class);
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 }
