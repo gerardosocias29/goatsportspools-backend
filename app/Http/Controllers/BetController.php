@@ -13,7 +13,7 @@ class BetController extends Controller
         $userId = Auth::user()->id;
 
         $filter = json_decode($request->filter);
-        $betsQuery = Bet::with(['wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team']);
+        $betsQuery = Bet::with(['wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team'])->where('user_id', $userId);
 
         $betsQuery = $this->applyFilters($betsQuery->orderBy('id', 'DESC'), $filter);
         $bets = $betsQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
