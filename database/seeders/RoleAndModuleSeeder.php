@@ -24,9 +24,10 @@ class RoleAndModuleSeeder extends Seeder
             ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
             ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
             ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history'],
-            ['name' => 'Manage Games', 'page' => 'game-management', 'icon' => 'icon-game-management'],
+            ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'],
 
             ['name' => 'NFL', 'page' => 'games/nfl', 'icon' => 'icon-nfl', 'parent_id' => 2],
+            ['name' => 'Manage Games', 'page' => '/settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 6],
         ];
 
         // Create the modules and store the IDs

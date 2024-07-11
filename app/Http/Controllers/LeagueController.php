@@ -108,15 +108,21 @@ class LeagueController extends Controller
 
     public function update(Request $request, $league_id)
     {
+        $user = Auth::user();
         $validatedData = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
+            'user_id' => 'nullable|integer',
         ]);
 
         $league = League::find($league_id);
 
         if (!empty($validatedData['password']) && $validatedData['password'] != null) {
             $league->password = bcrypt($validatedData['password']); // Assuming password should be hashed
+        }
+
+        if (!empty($validatedData['user_id']) && $validatedData['user_id'] != null && $user->role_id == 1) {
+            $league->user_id = $validatedData['user_id'];
         }
 
         $league->update($validatedData);
