@@ -61,6 +61,7 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'games'], function () {
         Route::get('/', [GameController::class, 'games']);
+        Route::post('/announce-winner', [GameController::class, 'announceWinner']);
     });
 
     Route::group(['prefix' => 'bets'], function () {
