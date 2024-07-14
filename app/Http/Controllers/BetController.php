@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Bet, Game};
+use App\Models\{Bet, Game, LeagueParticipant};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,6 +42,16 @@ class BetController extends Controller
         }
 
         foreach ($request->bets as $betData) {
+            if (!isset($betData['league_id']) || is_null($betData['league_id'])) {
+                return response()->json(["status" => false, "message" => "Unable to place bets. Please join a league first."]);
+            }
+
+            // check user if participan of league
+            $leagueParticipant = LeagueParticipant::where('league_id', $betData['league_id'])->where('user_id', $user->id)->first();
+            if(!$leagueParticipant){
+                return response()->json(["status" => false, "message" => "Unable to place bets. You are not a member of this league. Consider joining a league."]);
+            }
+
             $game = Game::where('id', $betData['game_id'])->first();
 
             $bet = new Bet();

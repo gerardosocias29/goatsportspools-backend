@@ -83,9 +83,7 @@ class UserController extends Controller
 
     public function getUserDetails(Request $request)
     {
-        // Retrieve user details from the request attributes (set by the middleware)
         $user = $request->attributes->get('user');
-        // Return user details as JSON
         $newUser = User::with(['role.sub_modules'])->where('email', $user->email)->where('clerk_id', $user->id)->first();
         if(!$newUser){
             $newUser = new User();
