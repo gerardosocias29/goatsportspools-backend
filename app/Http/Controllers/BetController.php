@@ -71,6 +71,8 @@ class BetController extends Controller
 
             $bet->ticket_number = \Carbon\Carbon::now()->format('ym').str_pad($bet->id, 6, "0", STR_PAD_LEFT);
             $bet->update();
+
+            UserController::updateBalance($user->id, -$betData['wager_amount']);
         }
 
         return response()->json(["status" => true, "message" => "Bets placed successfully."]);

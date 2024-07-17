@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\{User, Role, RoleModule};
+use App\Models\{User, Role, RoleModule, BalanceHistory};
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -174,5 +174,16 @@ class UserController extends Controller
         $user->update();
 
         return response(["status" => true, "message" => "User role updated successfully to League Admin!"]);
+    }
+
+    public static function updateBalance($user_id, $amount) {
+        $balanceHistory = new BalanceHistory();
+        $balanceHistory->user_id = $user_id;
+        $balanceHistory->amount = $amount;
+        $balanceHistory->save();
+
+        $user = User::where('id', $user_id)->first();
+        $user->balance = $user->balance + $amount;
+        $user->update();
     }
 }

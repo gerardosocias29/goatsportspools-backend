@@ -159,6 +159,8 @@ class LeagueController extends Controller
         $leagueParticipant->user_id = $userId;
         $leagueParticipant->save();
 
+        UserController::updateBalance($userId, 25000);
+
         return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
     }
 
