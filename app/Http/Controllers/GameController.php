@@ -13,7 +13,10 @@ class GameController extends Controller
         $userId = Auth::user()->id;
 
         $filter = json_decode($request->filter);
-        $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])->orderBy('game_datetime', 'ASC');
+        $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
+            ->where('home_team_score', '=', 0)
+            ->orWhere('visitor_team_score', '=', 0)
+            ->orderBy('game_datetime', 'ASC');
 
         $gamesQuery = $this->applyFilters($gamesQuery, $filter);
         $games = $gamesQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
