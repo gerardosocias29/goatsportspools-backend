@@ -41,6 +41,10 @@ class BetController extends Controller
             return response()->json(["status" => false, "message" => "Empty Bets."]);
         }
 
+        //check game if still available to bet
+        
+        //check balance
+
         foreach ($request->bets as $betData) {
             if (!isset($betData['league_id']) || is_null($betData['league_id'])) {
                 return response()->json(["status" => false, "message" => "Unable to place bets. Please join a league first."]);

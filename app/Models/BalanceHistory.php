@@ -10,6 +10,7 @@ class BalanceHistory extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'league_id',
         'user_id',
         'amount',
     ];

@@ -55,6 +55,13 @@ class LeagueController extends Controller
 
         $leagues->getCollection()->transform(function ($league) use ($userId) {
             $league->has_joined = $league->participants()->where('user_id', $userId)->exists();
+            if ($league->has_joined) {
+                $league->balance = $league->participants()
+                    ->where('user_id', $userId)
+                    ->select('league_participants.balance') // Assuming 'participants' is the table name
+                    ->first()
+                    ->balance;
+            }
             return $league;
         });
 
@@ -101,7 +108,10 @@ class LeagueController extends Controller
         $leagueParticipant = new LeagueParticipant();
         $leagueParticipant->league_id = $league->id;
         $leagueParticipant->user_id = Auth::user()->id;
+        $leagueParticipant->balance = 25000;
         $leagueParticipant->save();
+
+        self::updateLeagueUserBalanceHistory($league->id, Auth::user()->id, 25000);
 
         return response()->json(["status" => true, "message" => "League created successfully."]);
     }
@@ -157,11 +167,20 @@ class LeagueController extends Controller
         $leagueParticipant = new LeagueParticipant();
         $leagueParticipant->league_id = $leagueId;
         $leagueParticipant->user_id = $userId;
+        $leagueParticipant->balance = 25000;
         $leagueParticipant->save();
 
-        UserController::updateBalance($userId, 25000);
+        self::updateLeagueUserBalanceHistory($leagueId, $userId, 25000);
 
         return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
     }
+
+    public static function updateLeagueUserBalanceHistory($leagueId, $userId, $amount) {
+        $balance = new BalanceHistory();
+        $balance->league_id = $leagueId;
+        $balance->user_id = $userId;
+        $balance->amount = $amount;
+        $balance->save();
+    }    
 
 }
