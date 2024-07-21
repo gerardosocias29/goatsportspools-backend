@@ -183,6 +183,20 @@ class LeagueController extends Controller
         $balance->user_id = $userId;
         $balance->amount = $amount;
         $balance->save();
+    
+        $leagueParticipant = LeagueParticipant::where('league_id', $leagueId)->where('user_id', $userId)->first();
+        
+        $newBalance = $leagueParticipant->balance + $amount;
+        
+        if ($newBalance < 0) {
+            return "Insufficient balance to perform this operation.";
+        }
+    
+        // Update the balance
+        $leagueParticipant->balance = $newBalance;
+        $leagueParticipant->update();
+
+        return true;
     }    
 
 }

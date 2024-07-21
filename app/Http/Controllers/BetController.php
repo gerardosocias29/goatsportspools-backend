@@ -69,16 +69,33 @@ class BetController extends Controller
             $bet->picked_odd = $betData['pick_odd'];
             $bet->wager_amount = $betData['wager_amount'];
             $bet->wager_result = 'pending';
-            $bet->wager_win_amount = $betData['wager_amount'] * (100 / $game->standard_odd);
+
+            $win_amount = $betData['wager_amount'];
+            if($betData['wager_type_id'] == 3){ // moneyline
+                $win_amount = $this->calculateMoneylineWinnings($win_amount, $betData['pick_odd']);
+            }
+
+            $bet->wager_win_amount = $win_amount;
             $bet->bet_type = $betData['bet_type'];
             $bet->save();
 
             $bet->ticket_number = \Carbon\Carbon::now()->format('ym').str_pad($bet->id, 6, "0", STR_PAD_LEFT);
             $bet->update();
 
-            UserController::updateBalance($user->id, -$betData['wager_amount']);
+            // UserController::updateBalance($user->id, -$betData['wager_amount']);
         }
 
         return response()->json(["status" => true, "message" => "Bets placed successfully."]);
+    }
+
+    public function calculateMoneylineWinnings($betAmount, $moneylineOdds) {
+        $winnings = 0;
+        if ($moneylineOdds > 0) {
+            $winnings = $betAmount * ($moneylineOdds / 100);
+        } else {
+            $winnings = $betAmount * (100 / abs($moneylineOdds));
+        }
+    
+        return $winnings;
     }
 }
