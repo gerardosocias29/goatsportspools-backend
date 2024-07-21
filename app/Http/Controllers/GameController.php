@@ -109,11 +109,15 @@ class GameController extends Controller
                     break;
     
                 default:
-                    // Handle other wager types if needed
                     break;
             }
     
             $bet->save();
+
+            if ($bet->wager_result === 'win') {
+                $amount = $bet->wager_win_amount;
+                LeagueController::updateLeagueUserBalanceHistory($leagueId, $userId, $amount);
+            }
         }
     
         return response()->json(['message' => 'Winner announced and bets updated successfully.']);

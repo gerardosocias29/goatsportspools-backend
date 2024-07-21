@@ -41,11 +41,30 @@ class BetController extends Controller
             return response()->json(["status" => false, "message" => "Empty Bets."]);
         }
 
-        //check game if still available to bet
+        $gameIds = array_column($request->bets, 'game_id');
+        $games = Game::whereIn('id', $gameIds)->get()->keyBy('id');
         
         //check balance
+        $totalWagerAmount = array_sum(array_column($request->bets, 'wager_amount'));
+
+        // Check if user's balance is sufficient
+        $currentBalance = $leagueParticipant->balance;
+        if ($totalWagerAmount > $currentBalance) {
+            return response()->json(["status" => false, "message" => "Insufficient balance to place bets."]);
+        }
 
         foreach ($request->bets as $betData) {
+            $game = $games->get($betData['game_id']);
+            if (!$game) { return response()->json(["status" => false, "message" => "Game not found."]); }
+            $gameDatetime = $game->game_datetime;
+
+            $currentUtcTime = \Carbon\Carbon::now()->utc();
+            $gameTime = \Carbon\Carbon::parse($gameDatetime)->utc();
+            
+            if ($currentUtcTime->isSameOrAfter($gameTime->copy()->subMinutes(5))) {
+                return response()->json(["status" => false, "message" => "Betting is closed for this game."]);
+            }
+
             if (!isset($betData['league_id']) || is_null($betData['league_id'])) {
                 return response()->json(["status" => false, "message" => "Unable to place bets. Please join a league first."]);
             }
@@ -82,7 +101,7 @@ class BetController extends Controller
             $bet->ticket_number = \Carbon\Carbon::now()->format('ym').str_pad($bet->id, 6, "0", STR_PAD_LEFT);
             $bet->update();
 
-            // UserController::updateBalance($user->id, -$betData['wager_amount']);
+            LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $user->id, -$betData['wager_amount']);
         }
 
         return response()->json(["status" => true, "message" => "Bets placed successfully."]);

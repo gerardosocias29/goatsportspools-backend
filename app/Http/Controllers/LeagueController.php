@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{League, LeagueParticipant};
+use App\Models\{League, LeagueParticipant, BalanceHistory};
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
