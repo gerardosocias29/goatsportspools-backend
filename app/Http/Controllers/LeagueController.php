@@ -110,7 +110,7 @@ class LeagueController extends Controller
         $leagueParticipant = new LeagueParticipant();
         $leagueParticipant->league_id = $league->id;
         $leagueParticipant->user_id = Auth::user()->id;
-        $leagueParticipant->balance = 25000;
+        // $leagueParticipant->balance = 25000;
         $leagueParticipant->save();
 
         self::updateLeagueUserBalanceHistory($league->id, Auth::user()->id, 25000);
