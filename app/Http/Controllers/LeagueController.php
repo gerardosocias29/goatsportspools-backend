@@ -64,6 +64,9 @@ class LeagueController extends Controller
                     ->first()
                     ->balance;
             }
+            if(Auth::user()->role_id != 3){
+                $league->total_users = $league->participants()->count();
+            }
             return $league;
         });
 
