@@ -44,7 +44,11 @@ class BetController extends Controller
         $gameIds = array_column($request->bets, 'game_id');
         $games = Game::whereIn('id', $gameIds)->get()->keyBy('id');
         
-        //check balance
+        $firstBet = $request->bets[0];
+        $leagueParticipant = LeagueParticipant::where('league_id', $firstBet['league_id'])->where('user_id', $user->id)->first();
+        if (!$leagueParticipant) { return response()->json(["status" => false, "message" => "Unable to place bets. You are not a member of this league. Consider joining a league."]); }
+
+        // Calculate total wager amount
         $totalWagerAmount = array_sum(array_column($request->bets, 'wager_amount'));
 
         // Check if user's balance is sufficient
@@ -56,23 +60,12 @@ class BetController extends Controller
         foreach ($request->bets as $betData) {
             $game = $games->get($betData['game_id']);
             if (!$game) { return response()->json(["status" => false, "message" => "Game not found."]); }
-            $gameDatetime = $game->game_datetime;
-
+            $gameDatetime = $game->game_datetime; // Assuming `datetime` is the field name for the game time
             $currentUtcTime = \Carbon\Carbon::now()->utc();
             $gameTime = \Carbon\Carbon::parse($gameDatetime)->utc();
             
-            if ($currentUtcTime->isSameOrAfter($gameTime->copy()->subMinutes(5))) {
+            if ($currentUtcTime->gte($gameTime->copy()->subMinutes(5))) {
                 return response()->json(["status" => false, "message" => "Betting is closed for this game."]);
-            }
-
-            if (!isset($betData['league_id']) || is_null($betData['league_id'])) {
-                return response()->json(["status" => false, "message" => "Unable to place bets. Please join a league first."]);
-            }
-
-            // check user if participan of league
-            $leagueParticipant = LeagueParticipant::where('league_id', $betData['league_id'])->where('user_id', $user->id)->first();
-            if(!$leagueParticipant){
-                return response()->json(["status" => false, "message" => "Unable to place bets. You are not a member of this league. Consider joining a league."]);
             }
 
             $game = Game::where('id', $betData['game_id'])->first();
