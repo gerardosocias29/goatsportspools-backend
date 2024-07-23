@@ -42,7 +42,7 @@ class LeagueController extends Controller
     public function getLeagueById($id) {
         $userId = Auth::user()->id;
     
-        $league = League::with(['league_users.user', 'league_users.rebuys'])
+        $league = League::with(['league_users.user'])
             ->where('id', $id)
             ->firstOrFail();
     
@@ -181,7 +181,7 @@ class LeagueController extends Controller
         $leagueParticipant = new LeagueParticipant();
         $leagueParticipant->league_id = $leagueId;
         $leagueParticipant->user_id = $userId;
-        $leagueParticipant->balance = 25000;
+        $leagueParticipant->balance = 0;
         $leagueParticipant->save();
 
         self::updateLeagueUserBalanceHistory($leagueId, $userId, 25000, 'initial');
