@@ -19,6 +19,7 @@ class LeagueParticipant extends Model
     }
 
     public function rebuys() {
-        return $this->hasMany(BalanceHistory::class, 'league_id', 'league_id')->where('type', 'rebuy');
+        return $this->hasMany(BalanceHistory::class, 'league_id', 'league_id')
+                    ->where('user_id', $this->user_id);
     }
 }
