@@ -29,4 +29,8 @@ class League extends Model
     public function participants() {
         return $this->belongsToMany(User::class, 'league_participants');
     }
+
+    public function league_users() {
+        return $this->hasMany(LeagueParticipant::class, 'league_id');
+    }
 }

@@ -116,7 +116,7 @@ class GameController extends Controller
 
             if ($bet->wager_result === 'win') {
                 $amount = $bet->wager_win_amount;
-                LeagueController::updateLeagueUserBalanceHistory($leagueId, $userId, $amount);
+                LeagueController::updateLeagueUserBalanceHistory($leagueId, $userId, $amount, 'win');
             }
         }
     

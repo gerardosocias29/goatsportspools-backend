@@ -94,7 +94,7 @@ class BetController extends Controller
             $bet->ticket_number = \Carbon\Carbon::now()->format('ym').str_pad($bet->id, 6, "0", STR_PAD_LEFT);
             $bet->update();
 
-            LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $user->id, -$betData['wager_amount']);
+            LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $user->id, -$betData['wager_amount'], 'bet');
         }
 
         return response()->json(["status" => true, "message" => "Bets placed successfully."]);

@@ -49,13 +49,16 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'leagues'], function () {
         Route::get('/', [LeagueController::class, 'index']);
+        Route::get('/get/{id}', [LeagueController::class, 'getLeagueById']);
         Route::get('/leagues-joined', [LeagueController::class, 'totalLeaguesJoined']);
         Route::get('/leagues-created', [LeagueController::class, 'getLeaguesCreatedCount']);
         Route::get('/joined', [LeagueController::class, 'joinedLeagues']);
         Route::post('/store', [LeagueController::class, 'store']);
         Route::post('/join', [LeagueController::class, 'join']);
         Route::post('/update/{league_id}', [LeagueController::class, 'update']);
+        Route::post('/rebuy', [LeagueController::class, 'rebuy']);
         Route::delete('/delete/{league_id}', [LeagueController::class, 'update']);
+
 
     });
 

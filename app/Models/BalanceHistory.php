@@ -13,5 +13,6 @@ class BalanceHistory extends Model
         'league_id',
         'user_id',
         'amount',
+        'type'
     ];
 }

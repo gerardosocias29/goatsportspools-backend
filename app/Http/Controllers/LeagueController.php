@@ -39,39 +39,48 @@ class LeagueController extends Controller
         return response()->json(["status" => true, "leagues_created" => $leagueCreatedCount]);
     }
 
+    public function getLeagueById($id) {
+        $userId = Auth::user()->id;
+    
+        $league = League::with(['league_users.user', 'league_users.rebuys'])
+            ->where('id', $id)
+            ->firstOrFail();
+    
+        $league->has_joined = $league->participants()->where('user_id', $userId)->exists();
+        if ($league->has_joined) {
+            $leagueParticipant = $league->participants()->where('user_id', $userId)->first();
+            $league->balance = $leagueParticipant ? $leagueParticipant->balance : null;
+        }
+        if (Auth::user()->role_id != 3) {
+            $league->total_users = $league->participants()->count();
+        }
+    
+        return response()->json($league);
+    }    
 
     public function index(Request $request) {
         $userId = Auth::user()->id;
-
+    
         $filter = json_decode($request->filter);
-        $leaguesQuery = League::with(['created_by' => function($query){
-            $query->select('id', 'name');
-        }]);
-
-        // if (Auth::user()->role_id == 2) {
-        //     $leaguesQuery->where('user_id', Auth::user()->id);
-        // }
-
+        $leaguesQuery = League::with(['league_users.user', 'league_users.rebuys']);
+    
         $leaguesQuery = $this->applyFilters($leaguesQuery, $filter);
         $leagues = $leaguesQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
-
+    
         $leagues->getCollection()->transform(function ($league) use ($userId) {
             $league->has_joined = $league->participants()->where('user_id', $userId)->exists();
             if ($league->has_joined) {
-                $league->balance = $league->participants()
-                    ->where('user_id', $userId)
-                    ->select('league_participants.balance') // Assuming 'participants' is the table name
-                    ->first()
-                    ->balance;
+                $leagueParticipant = $league->participants()->where('user_id', $userId)->first();
+                $league->balance = $leagueParticipant ? $leagueParticipant->balance : null;
             }
-            if(Auth::user()->role_id != 3){
+            if (Auth::user()->role_id != 3) {
                 $league->total_users = $league->participants()->count();
             }
             return $league;
         });
-
+    
         return response()->json($leagues);
-    }
+    }    
 
     private function applyFilters($query, $filter) {
         if (!empty($filter->filters->global->value)) {
@@ -116,7 +125,7 @@ class LeagueController extends Controller
         // $leagueParticipant->balance = 25000;
         $leagueParticipant->save();
 
-        self::updateLeagueUserBalanceHistory($league->id, Auth::user()->id, 25000);
+        self::updateLeagueUserBalanceHistory($league->id, Auth::user()->id, 25000, 'initial');
 
         return response()->json(["status" => true, "message" => "League created successfully."]);
     }
@@ -175,16 +184,26 @@ class LeagueController extends Controller
         $leagueParticipant->balance = 25000;
         $leagueParticipant->save();
 
-        self::updateLeagueUserBalanceHistory($leagueId, $userId, 25000);
+        self::updateLeagueUserBalanceHistory($leagueId, $userId, 25000, 'initial');
 
         return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
     }
 
-    public static function updateLeagueUserBalanceHistory($leagueId, $userId, $amount) {
+    public function rebuy(Request $request) {
+        $user = Auth::user();
+        if($user->role_id != 3 && self::updateLeagueUserBalanceHistory($request->league_id, $request->user_id, 30000, 'rebuy')){
+            return response()->json(["status" => true, "message" => "Rebuy successful!"]);
+        }
+
+        return response()->json(["status" => false, "message" => "You don't have permissions"]);
+    }
+
+    public static function updateLeagueUserBalanceHistory($leagueId, $userId, $amount, $type) {
         $balance = new BalanceHistory();
         $balance->league_id = $leagueId;
         $balance->user_id = $userId;
         $balance->amount = $amount;
+        $balance->type = $type;
         $balance->save();
     
         $leagueParticipant = LeagueParticipant::where('league_id', $leagueId)->where('user_id', $userId)->first();
