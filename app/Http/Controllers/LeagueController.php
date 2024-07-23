@@ -42,10 +42,9 @@ class LeagueController extends Controller
     public function getLeagueById($id) {
         $userId = Auth::user()->id;
     
-        // Eager load league_users with the user and filtered rebuys
-        $league = League::with(['league_users.user', 'league_users.rebuys' => function($query) {
-            $query->whereColumn('league_users.user_id');
-        }])->where('id', $id)->firstOrFail();
+        $league = League::with(['league_users.user', 'league_users.rebuys'])
+            ->where('id', $id)
+            ->firstOrFail();
     
         $league->has_joined = $league->participants()->where('user_id', $userId)->exists();
         if ($league->has_joined) {
@@ -57,7 +56,7 @@ class LeagueController extends Controller
         }
     
         return response()->json($league);
-    }
+    }    
 
     public function index(Request $request) {
         $userId = Auth::user()->id;
