@@ -51,8 +51,14 @@ class LeagueController extends Controller
             $leagueParticipant = $league->participants()->where('user_id', $userId)->first();
             $league->balance = $leagueParticipant ? $leagueParticipant->balance : null;
         }
+        
         if (Auth::user()->role_id != 3) {
             $league->total_users = $league->participants()->count();
+        }
+
+        foreach($league->league_users as $l) {
+            $balanceHistory = BalanceHistory::where('user_id', $l->user_id)->where('league_id', $l->league_id)->where('type', 'rebuy')->count();
+            $l->rebuys = $balanceHistory;
         }
     
         return response()->json($league);
@@ -62,7 +68,7 @@ class LeagueController extends Controller
         $userId = Auth::user()->id;
     
         $filter = json_decode($request->filter);
-        $leaguesQuery = League::with(['league_users.user', 'league_users.rebuys']);
+        $leaguesQuery = League::with(['league_users.user']);
     
         $leaguesQuery = $this->applyFilters($leaguesQuery, $filter);
         $leagues = $leaguesQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));

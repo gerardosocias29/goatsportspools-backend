@@ -30,6 +30,10 @@ class League extends Model
         return $this->belongsToMany(User::class, 'league_participants');
     }
 
+    public function rebuys() {
+        return $this->belongsToMany(User::class, 'balance_histories')->where('type', 'rebuy');
+    }
+
     public function league_users() {
         return $this->hasMany(LeagueParticipant::class, 'league_id');
     }
