@@ -111,11 +111,12 @@ class GameController extends Controller
                 default:
                     break;
             }
-    
-            $bet->save();
+            
+            $bet->status = $bet->wager_result;
+            $bet->update();
 
             if ($bet->wager_result === 'win') {
-                $amount = $bet->wager_win_amount;
+                $amount = $bet->wager_win_amount + $bet->wager_amount;
                 LeagueController::updateLeagueUserBalanceHistory($leagueId, $userId, $amount, 'win');
             }
         }

@@ -12,8 +12,9 @@ class BetGroup extends Model
 
     protected $fillable = [
         'user_id',
-        'bet_type',
+        'wager_type_id',
         'wager_amount',
+        'wager_win_amount',
         'adjustment',
         'wager_result',
     ];

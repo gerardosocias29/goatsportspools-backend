@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Bet, Game, LeagueParticipant};
+use App\Models\{Bet, BetGroup, Game, LeagueParticipant, WagerType};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
@@ -57,6 +57,20 @@ class BetController extends Controller
             return response()->json(["status" => false, "message" => "Insufficient balance to place bets."]);
         }
 
+        $betGroup = new BetGroup();
+        if($request->wager_type == "parlay") {
+            $wagerTypeName = count($request->bets).'TP';
+            $wagerType = WagerType::where('name', $wagerTypeName)->first();
+
+            $betGroup->user_id = $user->id;
+            $betGroup->wager_type_id = $wagerType->id;
+            $betGroup->wager_amount = $request->wager_amount;
+            $betGroup->wager_win_amount = $request->wager_win_amount;
+            $betGroup->adjustment = 0;
+            $betGroup->wager_result = "pending";
+            $betGroup->save();
+        }
+
         foreach ($request->bets as $betData) {
             $game = $games->get($betData['game_id']);
             if (!$game) { return response()->json(["status" => false, "message" => "Game not found."]); }
@@ -94,7 +108,15 @@ class BetController extends Controller
             $bet->ticket_number = \Carbon\Carbon::now()->format('ym').str_pad($bet->id, 6, "0", STR_PAD_LEFT);
             $bet->update();
 
-            LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $user->id, -$betData['wager_amount'], 'bet');
+            if($request->wager_type == "parlay") {
+                $bet->bet_group_id = $betGroup->id;
+            } else {
+                LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $user->id, -$betData['wager_amount'], 'bet');
+            }
+        }
+
+        if($request->wager_type == "parlay") {
+            LeagueController::updateLeagueUserBalanceHistory($request->league_id, $user->id, -$request->wager_amount, 'bet');
         }
 
         return response()->json(["status" => true, "message" => "Bets placed successfully."]);
