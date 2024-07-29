@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class GameController extends Controller
 {
     public function games(Request $request) {
-        $bet->user_id = Auth::user()->id;
+        $userId = Auth::user()->id;
     
         $filter = json_decode($request->filter);
         $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
