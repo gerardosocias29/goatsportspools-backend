@@ -11,16 +11,21 @@ class GameController extends Controller
 {
     public function games(Request $request) {
         $userId = Auth::user()->id;
-
+    
         $filter = json_decode($request->filter);
+        $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
+    
         $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
-            ->where('home_team_score', '=', 0)
-            ->orWhere('visitor_team_score', '=', 0)
+            ->where('game_datetime', '>', $oneHourAgo)
+            ->where(function ($query) {
+                $query->where('home_team_score', '=', 0)
+                      ->orWhere('visitor_team_score', '=', 0);
+            })
             ->orderBy('game_datetime', 'ASC');
-
+    
         $gamesQuery = $this->applyFilters($gamesQuery, $filter);
-        $games = $gamesQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
-
+        $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
+    
         return response()->json($games);
     }
 
