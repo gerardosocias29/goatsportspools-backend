@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Game, Bet};
+use App\Models\{Game, Bet, BetGroup, WagerType};
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class GameController extends Controller
 {
     public function games(Request $request) {
-        $userId = Auth::user()->id;
+        $bet->user_id = Auth::user()->id;
     
         $filter = json_decode($request->filter);
         $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
@@ -124,12 +124,29 @@ class GameController extends Controller
             $bet->update();
 
             if ($bet->wager_result === 'win') {
-                $amount = $bet->wager_win_amount + $bet->wager_amount;
-                LeagueController::updateLeagueUserBalanceHistory($leagueId, $userId, $amount, 'win');
+                if($bet->bet_type == "straight") {
+                    $amount = $bet->wager_win_amount + $bet->wager_amount;
+                    LeagueController::updateLeagueUserBalanceHistory($leagueId, $bet->user_id, $amount, 'win');
+                }
+                if($bet->bet_type == "parlay" && $bet->bet_group_id != null) {
+                    $this->checkParlayWinning($bet->bet_group_id, $bet->user_id);
+                }
             }
         }
     
         return response()->json(['message' => 'Winner announced and bets updated successfully.']);
-    }   
+    }
+
+    public function checkParlayWinning($bet_group_id, $bet_user_id) {
+        $betGroup = BetGroup::where('id', $bet_group_id)->first();
+
+        $wagerType = WagerType::where('id', $betGroup->wager_type_id)->first();
+
+        $betsWinCount = Bets::where('bet_group_id', $bet_group_id)->where('bet_type', 'parlay')->where('wager_result', 'win')->count();
+        if($betsWinCount == $wagerType->no_of_teams){
+            $amount = $betGroup->wager_win_amount + $betGroup->wager_amount;
+            LeagueController::updateLeagueUserBalanceHistory($betGroup->league_id, $bet_user_id, $amount, 'win');
+        }
+    }
 
 }

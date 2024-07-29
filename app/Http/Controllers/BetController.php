@@ -105,6 +105,7 @@ class BetController extends Controller
             $betGroup->wager_type_id = $wagerType->id;
             $betGroup->wager_amount = $request->wager_amount;
             $betGroup->wager_win_amount = $request->wager_win_amount;
+            $betGroup->league_id = $request->league_id;
             $betGroup->adjustment = 0;
             $betGroup->wager_result = "pending";
             $betGroup->save();
