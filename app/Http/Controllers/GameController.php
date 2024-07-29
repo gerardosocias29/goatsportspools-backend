@@ -16,12 +16,15 @@ class GameController extends Controller
         $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
     
         $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
-            ->where('game_datetime', '>', $oneHourAgo)
             ->where(function ($query) {
                 $query->where('home_team_score', '=', 0)
                       ->orWhere('visitor_team_score', '=', 0);
             })
             ->orderBy('game_datetime', 'ASC');
+
+        if(Auth::user()->role_id != 1){
+            $gamesQuery->where('game_datetime', '>', $oneHourAgo);
+        }
     
         $gamesQuery = $this->applyFilters($gamesQuery, $filter);
         $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
