@@ -18,4 +18,13 @@ class BetGroup extends Model
         'adjustment',
         'wager_result',
     ];
+
+    public function bets() {
+        return $this->hasMany(Bet::class);
+    }
+
+    public function wagerType()
+    {
+        return $this->belongsTo(WagerType::class, 'wager_type_id');
+    }
 }

@@ -12,7 +12,8 @@ class Bet extends Model
 
     protected $fillable = [
         'game_id', 'user_id', 'pool_id', 'league_id', 'wager_type_id', 'odd_id', 
-        'team_id', 'picked_odd', 'wager_amount', 'wager_result', 'bet_type', 'ticket_number'
+        'team_id', 'picked_odd', 'wager_amount', 'wager_result', 'bet_type', 'ticket_number',
+        'status', 'bet_group_id'
     ];
 
     public function game()
@@ -48,5 +49,9 @@ class Bet extends Model
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function betGroup() {
+        return $this->belongsTo(BetGroup::class);
     }
 }

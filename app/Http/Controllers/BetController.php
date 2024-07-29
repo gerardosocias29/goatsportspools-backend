@@ -11,15 +11,53 @@ class BetController extends Controller
 {
     public function index(Request $request) {
         $userId = Auth::user()->id;
-
+    
         $filter = json_decode($request->filter);
-        $betsQuery = Bet::with(['wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team'])->where('user_id', $userId);
-
+        $betsQuery = Bet::with([
+            'wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team', 
+            'betGroup.bets', 'betGroup.wagerType',
+            'betGroup.bets.wagerType', 'betGroup.bets.game.home_team', 'betGroup.bets.game.visitor_team', 'betGroup.bets.team', 'betGroup.bets.odd.favored_team', 'betGroup.bets.odd.underdog_team'])
+            ->where('user_id', $userId);
+    
+        // Apply filters and order by
         $betsQuery = $this->applyFilters($betsQuery->orderBy('id', 'DESC'), $filter);
-        $bets = $betsQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
-
-        return response()->json($bets);
+    
+        // Get all bets
+        $bets = $betsQuery->get();
+    
+        $mergedBets = collect();
+    
+        foreach ($bets as $key => $bet) {
+            if ($bet->bet_group_id) {
+                $existingGroup = $mergedBets->firstWhere('bet_group_id', $bet->bet_group_id);
+                if ($existingGroup) {
+                    // Add bet to existing bet group
+                    $existingGroup->merged_bets->push($bet);
+                } else {
+                    $betCopy = clone $bet;
+                    $betCopy->merged_bets = collect([$bet]);
+                    $mergedBets->push($betCopy);
+                }
+            } else {
+                // No bet group, add as individual bet
+                $mergedBets->push($bet);
+            }
+        }
+    
+        // Paginate the merged bets
+        $page = $filter->page + 1;
+        $rows = $filter->rows;
+        $paginatedBets = new \Illuminate\Pagination\LengthAwarePaginator(
+            $mergedBets->forPage($page, $rows),
+            $mergedBets->count(),
+            $rows,
+            $page,
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+        );
+    
+        return response()->json($paginatedBets);
     }
+    
 
     private function applyFilters($query, $filter) {
         if (!empty($filter->filters->global->value)) {
@@ -57,11 +95,12 @@ class BetController extends Controller
             return response()->json(["status" => false, "message" => "Insufficient balance to place bets."]);
         }
 
-        $betGroup = new BetGroup();
+        $betGroupId = 0;
         if($request->wager_type == "parlay") {
             $wagerTypeName = count($request->bets).'TP';
             $wagerType = WagerType::where('name', $wagerTypeName)->first();
 
+            $betGroup = new BetGroup();
             $betGroup->user_id = $user->id;
             $betGroup->wager_type_id = $wagerType->id;
             $betGroup->wager_amount = $request->wager_amount;
@@ -69,6 +108,8 @@ class BetController extends Controller
             $betGroup->adjustment = 0;
             $betGroup->wager_result = "pending";
             $betGroup->save();
+
+            $betGroupId = $betGroup->id;
         }
 
         foreach ($request->bets as $betData) {
@@ -109,7 +150,8 @@ class BetController extends Controller
             $bet->update();
 
             if($request->wager_type == "parlay") {
-                $bet->bet_group_id = $betGroup->id;
+                $bet->bet_group_id = $betGroupId;
+                $bet->update();
             } else {
                 LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $user->id, -$betData['wager_amount'], 'bet');
             }
