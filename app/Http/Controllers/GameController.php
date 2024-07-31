@@ -70,15 +70,19 @@ class GameController extends Controller
                         $adjusted_home_score = $game->home_team_score + $spread;
                         if ($adjusted_home_score > $game->visitor_team_score) {
                             $bet->wager_result = 'win';
-                        } else {
+                        } elseif ($adjusted_home_score < $game->visitor_team_score) {
                             $bet->wager_result = 'lose';
+                        } else {
+                            $bet->wager_result = 'push'; // Adjusted score equals the visitor's score
                         }
                     } elseif ($bet->team_id == $game->visitor_team_id) {
                         $adjusted_visitor_score = $game->visitor_team_score + $spread;
                         if ($adjusted_visitor_score > $game->home_team_score) {
                             $bet->wager_result = 'win';
-                        } else {
+                        } elseif ($adjusted_visitor_score < $game->home_team_score) {
                             $bet->wager_result = 'lose';
+                        } else {
+                            $bet->wager_result = 'push'; // Adjusted score equals the home's score
                         }
                     }
                     break;
@@ -107,7 +111,9 @@ class GameController extends Controller
                     break;
     
                 case 3: // MoneyLine
-                    if ($bet->team_id == $game->home_team_id && $game->home_team_score > $game->visitor_team_score) {
+                    if ($game->home_team_score == $game->visitor_team_score) {
+                        $bet->wager_result = 'push'; // Game ended in a tie
+                    } elseif ($bet->team_id == $game->home_team_id && $game->home_team_score > $game->visitor_team_score) {
                         $bet->wager_result = 'win';
                     } elseif ($bet->team_id == $game->visitor_team_id && $game->visitor_team_score > $game->home_team_score) {
                         $bet->wager_result = 'win';
@@ -120,7 +126,6 @@ class GameController extends Controller
                     break;
             }
             
-            $bet->status = $bet->wager_result;
             $bet->update();
 
             if ($bet->wager_result === 'win') {
@@ -129,7 +134,12 @@ class GameController extends Controller
                     LeagueController::updateLeagueUserBalanceHistory($leagueId, $bet->user_id, $amount, 'win');
                 }
                 if($bet->bet_type == "parlay" && $bet->bet_group_id != null) {
-                    $this->checkParlayWinning($bet->bet_group_id, $bet->user_id);
+                    $this->checkParlayWinning($bet->bet_group_id, $bet->user_id);   
+                }
+            } else {
+                // convert parlay
+                if($bet->bet_type == "parlay" && $bet->bet_group_id != null && $bet->wager_result == "push") {
+                    $this->reduceParlayTeams($bet->bet_group_id);
                 }
             }
         }
@@ -148,5 +158,85 @@ class GameController extends Controller
             LeagueController::updateLeagueUserBalanceHistory($betGroup->league_id, $bet_user_id, $amount, 'win');
         }
     }
+
+    public function reduceParlayTeams($bet_group_id) {
+        $betGroup = BetGroup::where('id', $bet_group_id)->first();
+        if ($betGroup) {
+    
+            // Get all bets in the parlay
+            $parlayBets = Bet::where('bet_group_id', $bet_group_id)->where('wager_result', '!=', 'push')->get();
+            $betCount = count($parlayBets);
+
+            if ($betCount < 2) {
+                // // Recalculate the odds for the straight bet
+                // $combinedDecimalOdds = 1;
+                // foreach ($parlayBets as $parlayBet) {
+                //     if ($parlayBet->wager_result !== 'push') {
+                //         $combinedDecimalOdds *= $this->americanToDecimal($parlayBet->picked_odd);
+                //     }
+                // }
+    
+                // // Update each bet to be a straight bet
+                // foreach ($parlayBets as $parlayBet) {
+                //     $parlayBet->bet_type = 'straight';
+                //     $parlayBet->wager_win_amount = $parlayBet->wager_amount * $combinedDecimalOdds;
+                //     $parlayBet->save();
+                // }
+    
+                // // Update the user's balance
+                // $totalWinnings = $betGroup->wager_amount * $combinedDecimalOdds;
+                // LeagueController::updateLeagueUserBalanceHistory($betGroup->league_id, $user_id, $totalWinnings, 'win');
+    
+                // // Delete the bet group as it is no longer a parlay
+                // $betGroup->delete();
+            } else {
+                $wagerTypeName = $betCount.'TP';
+                $wagerType = WagerType::where('name', $wagerTypeName)->first();
+                $betGroup->wager_type_id = $wagerType->id;
+                $betGroup->save();
+
+                // If still a parlay, use predefined odds
+                $parlayOdds = [
+                    "2" => 2.6,
+                    "3" => 6,
+                    "5" => 22,
+                    "4" => 11,
+                    "6" => 45,
+                    "7" => 90,
+                    "8" => 180
+                ];
+    
+                $combinedDecimalOdds = 1;
+                $totalOdds = $parlayOdds[$betCount];
+                $hasMoneyline = false;
+
+                foreach ($parlayBets as $parlayBet) {
+                    if($parlayBet->wager_type_id == 3){ // moneyline
+                        $combinedDecimalOdds *= $this->americanToDecimal($parlayBet->picked_odd);
+                        $hasMoneyline = true;
+                    }
+                }
+
+                $potentialPayout = 0;
+                if($hasMoneyline) {
+                    $potentialPayout = $betGroup->wager_amount * $combinedDecimalOdds;
+                } else {
+                    $potentialPayout = $betGroup->wager_amount * $totalOdds;
+                }
+
+                $betGroup->wager_win_amount = $potentialPayout;
+    
+                $betGroup->save();
+            }
+        }
+    }
+    
+    private function americanToDecimal($americanOdds) {
+        if ($americanOdds > 0) {
+            return ($americanOdds / 100) + 1;
+        } else {
+            return (100 / abs($americanOdds)) + 1;
+        }
+    }    
 
 }
