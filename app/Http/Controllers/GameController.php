@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class GameController extends Controller
 {
     public function games(Request $request) {
-        $userId = Auth::user()->id;
+        $user = Auth::user();
     
         $filter = json_decode($request->filter);
         $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
@@ -22,8 +22,11 @@ class GameController extends Controller
             })
             ->orderBy('game_datetime', 'ASC');
 
-        if(Auth::user()->role_id != 1){
+        if($user->role_id != 1){
             $gamesQuery->where('game_datetime', '>', $oneHourAgo);
+        } else {
+            $gamesQuery->where('visitor_team_score', '<', 1);
+            $gamesQuery->orWhere('home_team_score', '<', 1);
         }
     
         $gamesQuery = $this->applyFilters($gamesQuery, $filter);

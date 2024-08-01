@@ -190,7 +190,7 @@ class LeagueController extends Controller
         $leagueParticipant->balance = 0;
         $leagueParticipant->save();
 
-        self::updateLeagueUserBalanceHistory($leagueId, $userId, 25000, 'initial');
+        self::updateLeagueUserBalanceHistory($leagueId, $userId, 3000, 'initial');
 
         return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
     }
