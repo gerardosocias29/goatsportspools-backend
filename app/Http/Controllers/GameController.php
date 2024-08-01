@@ -167,65 +167,15 @@ class GameController extends Controller
             $parlayBets = Bet::where('bet_group_id', $bet_group_id)->where('wager_result', '!=', 'push')->get();
             $betCount = count($parlayBets);
 
-            if ($betCount < 2) {
-                // // Recalculate the odds for the straight bet
-                // $combinedDecimalOdds = 1;
-                // foreach ($parlayBets as $parlayBet) {
-                //     if ($parlayBet->wager_result !== 'push') {
-                //         $combinedDecimalOdds *= $this->americanToDecimal($parlayBet->picked_odd);
-                //     }
-                // }
-    
-                // // Update each bet to be a straight bet
-                // foreach ($parlayBets as $parlayBet) {
-                //     $parlayBet->bet_type = 'straight';
-                //     $parlayBet->wager_win_amount = $parlayBet->wager_amount * $combinedDecimalOdds;
-                //     $parlayBet->save();
-                // }
-    
-                // // Update the user's balance
-                // $totalWinnings = $betGroup->wager_amount * $combinedDecimalOdds;
-                // LeagueController::updateLeagueUserBalanceHistory($betGroup->league_id, $user_id, $totalWinnings, 'win');
-    
-                // // Delete the bet group as it is no longer a parlay
-                // $betGroup->delete();
-            } else {
-                $wagerTypeName = $betCount.'TP';
-                $wagerType = WagerType::where('name', $wagerTypeName)->first();
-                $betGroup->wager_type_id = $wagerType->id;
-                $betGroup->save();
-
-                // If still a parlay, use predefined odds
-                $parlayOdds = [
-                    "2" => 2.6,
-                    "3" => 6,
-                    "5" => 22,
-                    "4" => 11,
-                    "6" => 45,
-                    "7" => 90,
-                    "8" => 180
-                ];
-    
-                $combinedDecimalOdds = 1;
-                $totalOdds = $parlayOdds[$betCount];
-                $hasMoneyline = false;
-
-                foreach ($parlayBets as $parlayBet) {
-                    if($parlayBet->wager_type_id == 3){ // moneyline
-                        $combinedDecimalOdds *= $this->americanToDecimal($parlayBet->picked_odd);
-                        $hasMoneyline = true;
-                    }
-                }
-
-                $potentialPayout = 0;
-                if($hasMoneyline) {
-                    $potentialPayout = $betGroup->wager_amount * $combinedDecimalOdds;
+            $combinedOdds = 1;
+            foreach($parlayBets as $bet){
+                if($bet->wager_type_id == 3){
+                    $combinedOdds *= $this->americanToDecimal($bet->picked_odd);
                 } else {
-                    $potentialPayout = $betGroup->wager_amount * $totalOdds;
+                    $combinedOdds *= 2;
                 }
-
+                $potentialPayout = $betGroup->wager_amount * $combinedOdds;
                 $betGroup->wager_win_amount = $potentialPayout;
-    
                 $betGroup->save();
             }
         }
