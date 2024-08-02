@@ -192,7 +192,7 @@ class LeagueController extends Controller
 
         self::updateLeagueUserBalanceHistory($leagueId, $userId, 3000, 'initial');
 
-        return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
+        return response()->json(['message' => 'Successfully joined the league.', "status" => true]);    
     }
 
     public function rebuy(Request $request) {

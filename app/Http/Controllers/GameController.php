@@ -13,26 +13,76 @@ class GameController extends Controller
         $user = Auth::user();
     
         $filter = json_decode($request->filter);
-        $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
-    
-        $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
-            ->where(function ($query) {
-                $query->where('home_team_score', '=', 0)
-                      ->orWhere('visitor_team_score', '=', 0);
-            })
-            ->orderBy('game_datetime', 'ASC');
 
-        if($user->role_id != 1){
-            $gamesQuery->where('game_datetime', '>', $oneHourAgo);
+        $type = $request->type;
+        
+        $tease_point = $type == "teaser_6" ? 6 : ($type == "teaser_6_5" ? 6.5 : 7);
+        if($type == "parlay" || $type == "straight"){
+            $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
+    
+            $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
+                ->where(function ($query) {
+                    $query->where('home_team_score', '=', 0)
+                        ->orWhere('visitor_team_score', '=', 0);
+                })
+                ->orderBy('game_datetime', 'ASC');
+
+            if($user->role_id != 1){
+                $gamesQuery->where('game_datetime', '>', $oneHourAgo);
+            } else {
+                $gamesQuery->where('visitor_team_score', '<', 1);
+                $gamesQuery->orWhere('home_team_score', '<', 1);
+            }
+        
+            $gamesQuery = $this->applyFilters($gamesQuery, $filter);
+            $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
+        
+            return response()->json($games);
         } else {
-            $gamesQuery->where('visitor_team_score', '<', 1);
-            $gamesQuery->orWhere('home_team_score', '<', 1);
+            // adjust tease points, 
+            // game.odd.favored_points game.odd.underdog_points, game.odd.over_total game.odd.under_total
+            $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
+
+            $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
+                ->where(function ($query) {
+                    $query->where('home_team_score', '=', 0)
+                        ->orWhere('visitor_team_score', '=', 0);
+                })
+                ->orderBy('game_datetime', 'ASC');
+            
+            if($user->role_id != 1){
+                $gamesQuery->where('game_datetime', '>', $oneHourAgo);
+            } else {
+                $gamesQuery->where('visitor_team_score', '<', 1);
+                $gamesQuery->orWhere('home_team_score', '<', 1);
+            }
+
+            $games = $gamesQuery->get();
+
+            // Adjust tease points for each game
+            $adjustedGames = $games->map(function ($game) use ($tease_point) {
+                $game->odd->favored_points += $tease_point;
+                $game->odd->underdog_points += $tease_point;
+                $game->odd->over_total -= $tease_point;
+                $game->odd->under_total += $tease_point;
+                return $game;
+            });
+
+            // Paginate the adjusted games
+            $currentPage = $filter->page + 1;
+            $perPage = $filter->rows;
+            $paginatedGames = new \Illuminate\Pagination\LengthAwarePaginator(
+                $adjustedGames->forPage($currentPage, $perPage),
+                $adjustedGames->count(),
+                $perPage,
+                $currentPage,
+                ['path' => request()->url(), 'query' => request()->query()]
+            );
+
+            return response()->json($paginatedGames);
         }
-    
-        $gamesQuery = $this->applyFilters($gamesQuery, $filter);
-        $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
-    
-        return response()->json($games);
+
+        
     }
 
     private function applyFilters($query, $filter) {
