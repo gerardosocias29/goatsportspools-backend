@@ -96,8 +96,15 @@ class BetController extends Controller
         }
 
         $betGroupId = 0;
-        if($request->wager_type == "parlay") {
-            $wagerTypeName = count($request->bets).'TP';
+        if($request->wager_type == "parlay" || strpos($request->wager_type, 'teaser') !== false) {
+            $wagerTypeNameExt = "TP";
+            $adjustment = 0;
+            if(strpos($request->wager_type, 'teaser') !== false){
+                $adjustment = $request->wager_type == "teaser_7" ? 7 : ($request->wager_type == "teaser_6_5" ? 6.5 : 6);
+                $wagerTypeNameExt = "TT";
+            }
+
+            $wagerTypeName = count($request->bets).$wagerTypeNameExt;
             $wagerType = WagerType::where('name', $wagerTypeName)->first();
 
             $betGroup = new BetGroup();
@@ -106,7 +113,7 @@ class BetController extends Controller
             $betGroup->wager_amount = $request->wager_amount;
             $betGroup->wager_win_amount = $request->wager_win_amount;
             $betGroup->league_id = $request->league_id;
-            $betGroup->adjustment = 0;
+            $betGroup->adjustment = $adjustment;
             $betGroup->wager_result = "pending";
             $betGroup->save();
 
@@ -150,7 +157,7 @@ class BetController extends Controller
             $bet->ticket_number = \Carbon\Carbon::now()->format('ym').str_pad($bet->id, 6, "0", STR_PAD_LEFT);
             $bet->update();
 
-            if($request->wager_type == "parlay") {
+            if($request->wager_type == "parlay" || strpos($request->wager_type, 'teaser') !== false) {
                 $bet->bet_group_id = $betGroupId;
                 $bet->update();
             } else {
