@@ -9,6 +9,18 @@ use Illuminate\Database\Eloquent\Builder;
 
 class BetController extends Controller
 {
+    public function totalAtRisk(Request $request) {
+        $user = Auth::user();
+
+        $betsRisk = 0;
+        $betGroupRisks = 0;
+
+        $betsRisks = Bet::where('user_id', $user->id)->where('wager_result', 'pending')->sum('wager_amount');
+        $betGroupRisks = BetGroup::where('user_id', $user->id)->where('wager_result', 'pending')->sum('wager_amount');
+
+        return response()->json(["status" => true, "at_risk" => $betsRisk + $betGroupRisks]);
+    }
+
     public function index(Request $request) {
         $userId = Auth::user()->id;
     
@@ -26,7 +38,11 @@ class BetController extends Controller
         $bets = $betsQuery->get();
     
         $mergedBets = collect();
-    
+        
+        $betsRisk = $betsQuery->where('wager_result', 'pending')->sum('wager_amount');
+        $groupBetRisk = BetGroup::where('wager_result', 'pending')->where('user_id', $userId)->sum('wager_amount');
+
+        $totalAtRisk = $betsRisk + $groupBetRisk;
         foreach ($bets as $key => $bet) {
             if ($bet->bet_group_id) {
                 $existingGroup = $mergedBets->firstWhere('bet_group_id', $bet->bet_group_id);
@@ -54,6 +70,8 @@ class BetController extends Controller
             $page,
             ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
         );
+
+        $paginatedBets->appends(['total_at_risk' => $totalAtRisk]);
     
         return response()->json($paginatedBets);
     }
