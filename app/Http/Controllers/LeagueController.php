@@ -210,7 +210,11 @@ class LeagueController extends Controller
 
     public function rebuy(Request $request) {
         $user = Auth::user();
-        if($user->role_id != 3 && self::updateLeagueUserBalanceHistory($request->league_id, $request->user_id, 30000, 'rebuy')){
+
+        $amount = $request->amount == "BGV03" ? 30000 : ($request->amount == "BGV60" ? 6000 : 0);
+        
+
+        if($user->role_id != 3 && self::updateLeagueUserBalanceHistory($request->league_id, $request->user_id, $amount, 'rebuy')){
             return response()->json(["status" => true, "message" => "Rebuy successful!"]);
         }
 
