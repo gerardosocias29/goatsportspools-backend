@@ -57,6 +57,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/join', [LeagueController::class, 'join']);
         Route::post('/update/{league_id}', [LeagueController::class, 'update']);
         Route::post('/rebuy', [LeagueController::class, 'rebuy']);
+        Route::post('/buyin', [LeagueController::class, 'buyin']);
         Route::delete('/delete/{league_id}', [LeagueController::class, 'update']);
 
 

@@ -66,20 +66,34 @@ class LeagueController extends Controller
 
     public function index(Request $request) {
         $userId = Auth::user()->id;
+        $roleId = Auth::user()->role_id;
     
         $filter = json_decode($request->filter);
+    
+        // Initialize the query
         $leaguesQuery = League::with(['league_users.user']);
     
-        $leaguesQuery = $this->applyFilters($leaguesQuery, $filter);
-        $leagues = $leaguesQuery->paginate(($filter->rows), ['*'], 'page', ($filter->page + 1));
+        // Apply role-based filter
+        if ($roleId == 3) {
+            $leaguesQuery->whereHas('participants', function ($query) use ($userId) {
+                $query->where('user_id', $userId);
+            });
+        }
     
-        $leagues->getCollection()->transform(function ($league) use ($userId) {
+        // Apply other filters
+        $leaguesQuery = $this->applyFilters($leaguesQuery, $filter);
+    
+        // Paginate results
+        $leagues = $leaguesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
+    
+        // Transform results
+        $leagues->getCollection()->transform(function ($league) use ($userId, $roleId) {
             $league->has_joined = $league->participants()->where('user_id', $userId)->exists();
             if ($league->has_joined) {
-                $leagueParticipant = $league->participants()->where('user_id', $userId)->first();
+                $leagueParticipant = LeagueParticipant::where('user_id', $userId)->where('league_id', $league->id)->first();
                 $league->balance = $leagueParticipant ? $leagueParticipant->balance : null;
             }
-            if (Auth::user()->role_id != 3) {
+            if ($roleId != 3) {
                 $league->total_users = $league->participants()->count();
             }
             return $league;
@@ -169,36 +183,44 @@ class LeagueController extends Controller
     public function join(Request $request) {
         $validatedData = $request->validate([
             'password' => 'required',
-            'league_id' => 'required|exists:leagues,id',
+            'league_id' => 'required',
         ]);
 
         $password = $validatedData['password'];
         $leagueId = $validatedData['league_id'];
 
-        $league = League::findOrFail($leagueId);
+        $league = League::where('league_id', $leagueId)->first();
 
-        if (!Hash::check($password, $league->password)) {
-            return response()->json(["status" => false, 'message' => 'Incorrect password']);
+        if (!$league || !Hash::check($password, $league->password)) {
+            return response()->json(["status" => false, 'message' => 'Unable to join the league. Check if you have correct League ID and Password.']);
         }
 
-        // Associate the authenticated user with the league
         $userId = Auth::user()->id;
 
         $leagueParticipant = new LeagueParticipant();
-        $leagueParticipant->league_id = $leagueId;
+        $leagueParticipant->league_id = $league->id;
         $leagueParticipant->user_id = $userId;
         $leagueParticipant->balance = 0;
         $leagueParticipant->save();
 
-        self::updateLeagueUserBalanceHistory($leagueId, $userId, 3000, 'initial');
+        self::updateLeagueUserBalanceHistory($league->id, $userId, 3000, 'initial');
 
-        return response()->json(['message' => 'Successfully joined the league.', "status" => true]);    
+        return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
     }
 
     public function rebuy(Request $request) {
         $user = Auth::user();
         if($user->role_id != 3 && self::updateLeagueUserBalanceHistory($request->league_id, $request->user_id, 30000, 'rebuy')){
             return response()->json(["status" => true, "message" => "Rebuy successful!"]);
+        }
+
+        return response()->json(["status" => false, "message" => "You don't have permissions"]);
+    }
+
+    public function buyin(Request $request) {
+        $user = Auth::user();
+        if($user->role_id != 3 && self::updateLeagueUserBalanceHistory($request->league_id, $request->user_id, 3000, 'buyin')){
+            return response()->json(["status" => true, "message" => "Buyin successful!"]);
         }
 
         return response()->json(["status" => false, "message" => "You don't have permissions"]);

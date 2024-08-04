@@ -194,6 +194,15 @@ class GameController extends Controller
                 if($bet->bet_type == "parlay" && $bet->bet_group_id != null && $bet->wager_result == "push") {
                     $this->reduceParlayTeams($bet->bet_group_id);
                 }
+
+                if(strpos($bet->bet_type, 'teaser') !== false && $bet->bet_group_id && $bet->wager_result == "push") {
+                    $this->reduceTeaserTeams($bet->bet_group_id);
+                }
+
+                if($bet->bet_type == "straight" && $bet->wager_result == "push") {
+                    // add wager_amount to balance
+                    LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $bet->user_id, $bet->wager_amount, 'refund');
+                }
             }
         }
     
@@ -242,4 +251,62 @@ class GameController extends Controller
         }
     }    
 
+    public function reduceTeaserTeams($bet_group_id) {
+        $betGroup = BetGroup::where('id', $bet_group_id)->first();
+        if ($betGroup) {
+            // Get all bets in the teaser that are not pushed
+            $teaserBets = Bet::where('bet_group_id', $bet_group_id)->where('wager_result', '!=', 'push')->get();
+            $betCount = count($teaserBets);
+    
+            if ($betCount < 2) {
+                $betGroup->wager_result = 'void';
+                $betGroup->wager_win_amount = $betGroup->wager_amount; // Return the original wager amount
+
+                LeagueController::updateLeagueUserBalanceHistory($betGroup->league_id, $betGroup->user_id, $betGroup->wager_amount, 'refund');
+                // return the wager_amount to balance
+            } else {
+                $teaserOdds = [
+                    6 => [
+                        2 => -110,
+                        3 => 160,
+                        4 => 260,
+                        5 => 400,
+                        6 => 600,
+                        7 => 900,
+                        8 => 1400
+                    ],
+                    6.5 => [
+                        2 => -120,
+                        3 => 150,
+                        4 => 240,
+                        5 => 360,
+                        6 => 550,
+                        7 => 800,
+                        8 => 1200
+                    ],
+                    7 => [
+                        2 => -130,
+                        3 => 140,
+                        4 => 200,
+                        5 => 320,
+                        6 => 450,
+                        7 => 700,
+                        8 => 1000
+                    ]
+                ];
+    
+                $teaserPoints = $betGroup->adjustment;
+    
+                $odds = $teaserOdds[$teaserPoints][$betCount];
+    
+                $decimalOdds = $this->americanToDecimal($odds);
+    
+                $potentialPayout = $betGroup->wager_amount * $decimalOdds;
+                $betGroup->wager_win_amount = $potentialPayout;
+            }
+    
+            $betGroup->save();
+        }
+    }
+    
 }
