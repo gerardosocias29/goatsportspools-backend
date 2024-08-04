@@ -16,7 +16,7 @@ class GameController extends Controller
 
         $type = $request->type;
         
-        $tease_point = $type == "teaser_6" ? 6 : ($type == "teaser_6_5" ? 6.5 : 7);
+        $tease_point = $type == "teaser_6" ? 6 : ($type == "teaser_6_5" ? 6.5 : ($type == "teaser_7" ? 7 : 0));
         if($type == "parlay" || $type == "straight"){
             $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
     
