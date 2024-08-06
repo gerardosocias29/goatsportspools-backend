@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Game, Bet, BetGroup, WagerType};
+use App\Models\{Game, Bet, BetGroup, WagerType, Odd};
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -309,4 +309,48 @@ class GameController extends Controller
         }
     }
     
+
+    public function create(Request $request) {
+        $user = Auth::user();
+
+        if($user->role_id != 1) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to create game."]);
+        }
+
+        $home_team = $request->home_team['id'];
+        $favored_team = $request->favored_team['id'];
+        $underdog_team = $request->underdog_team['id'];
+
+        $game = new Game();
+        $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime)->toDateTimeString();
+        $game->time_zone = 1;
+        $game->league_id = 1; 
+
+        $game->home_team_id = $home_team;
+        $game->visitor_team_id = $home_team == $favored_team ? $underdog_team : $favored_team;
+        $game->location = '';
+        $game->city = '';
+        $game->state = '';
+        $game->home_team_score = 0;
+        $game->visitor_team_score = 0;
+
+        $game->save();
+
+        $odd = new Odd();
+        $odd->game_id = $game->id;
+        $odd->favored_team_id = $favored_team;
+        $odd->underdog_team_id = $underdog_team;
+        $odd->favored_points = $request->favored_spread ?? 0;
+        $odd->underdog_points = $request->underdog_spread ?? 0;
+        $odd->favored_ml = $request->favored_ml ?? 0;
+        $odd->underdog_ml = $request->underdog_ml ?? 0;
+        $odd->over_total = $request->over_total ?? 0;
+        $odd->under_total = $request->under_total ?? 0;
+
+        $odd->created_by = $user->id;
+
+        $odd->save();
+
+        return response()->json(["status" => true, "message" => "Game created successfully.", "game" => $game, "odd" => $odd]);
+    }
 }
