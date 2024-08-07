@@ -70,23 +70,14 @@ class LeagueController extends Controller
     
         $filter = json_decode($request->filter);
     
-        // Initialize the query
         $leaguesQuery = League::with(['league_users.user']);
-    
-        // Apply role-based filter
-        if ($roleId == 3) {
-            $leaguesQuery->whereHas('participants', function ($query) use ($userId) {
-                $query->where('user_id', $userId);
-            });
-        }
-    
-        // Apply other filters
+        // if ($roleId == 3) {
+        //     $leaguesQuery->whereHas('participants', function ($query) use ($userId) {
+        //         $query->where('user_id', $userId);
+        //     });
+        // }
         $leaguesQuery = $this->applyFilters($leaguesQuery, $filter);
-    
-        // Paginate results
         $leagues = $leaguesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
-    
-        // Transform results
         $leagues->getCollection()->transform(function ($league) use ($userId, $roleId) {
             $league->has_joined = $league->participants()->where('user_id', $userId)->exists();
             if ($league->has_joined) {
