@@ -18,7 +18,13 @@ class BetController extends Controller
         $betsRisks = Bet::where('user_id', $user->id)->where('wager_result', 'pending')->sum('wager_amount');
         $betGroupRisks = BetGroup::where('user_id', $user->id)->where('wager_result', 'pending')->sum('wager_amount');
 
-        return response()->json(["status" => true, "at_risk" => $betsRisk + $betGroupRisks]);
+        $totalBalance = LeagueParticipant::where('user_id', $user->id)
+            ->selectRaw("SUM(balance) as total_balance")
+            ->groupBy('user_id')
+            ->pluck('total_balance')
+            ->first();
+
+        return response()->json(["status" => true, "at_risk" => $betsRisk + $betGroupRisks, 'total_balance' => $totalBalance]);
     }
 
     public function index(Request $request) {

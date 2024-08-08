@@ -353,4 +353,41 @@ class GameController extends Controller
 
         return response()->json(["status" => true, "message" => "Game created successfully.", "game" => $game, "odd" => $odd]);
     }
+
+    public function update(Request $request, $id) {
+        $user = Auth::user();
+
+        if($user->role_id != 1) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to update game."]);
+        }
+
+        $home_team = $request->home_team['id'];
+        $favored_team = $request->favored_team['id'];
+        $underdog_team = $request->underdog_team['id'];
+
+        $game = Game::where('id', $id)->first();
+        $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime)->toDateTimeString();
+        $game->home_team_id = $home_team;
+        $game->visitor_team_id = $home_team == $favored_team ? $underdog_team : $favored_team;
+        $game->location = '';
+        $game->city = '';
+        $game->state = '';
+        $game->home_team_score = 0;
+        $game->visitor_team_score = 0;
+        $game->update();
+
+        $odd = Odd::where('game_id', $id)->first();
+        $odd->favored_team_id = $favored_team;
+        $odd->underdog_team_id = $underdog_team;
+        $odd->favored_points = $request->favored_spread ?? 0;
+        $odd->underdog_points = $request->underdog_spread ?? 0;
+        $odd->favored_ml = $request->favored_ml ?? 0;
+        $odd->underdog_ml = $request->underdog_ml ?? 0;
+        $odd->over_total = $request->over_total ?? 0;
+        $odd->under_total = $request->under_total ?? 0;
+
+        $odd->update();
+
+        return response()->json(["status" => true, "message" => "Game updated successfully."]);
+    }
 }
