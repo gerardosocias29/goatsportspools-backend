@@ -76,4 +76,16 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Bet::class);
     }
+
+    public function win_bets() {
+        return $this->hasMany(Bet::class)->where('wager_result', 'win')->whereNull('bet_group_id');
+    }
+
+    public function lose_bets() {
+        return $this->hasMany(Bet::class)->where('wager_result', 'lose')->whereNull('bet_group_id');
+    }
+
+    public function tie_bets() {
+        return $this->hasMany(Bet::class)->where('wager_result', 'push')->whereNull('bet_group_id');
+    }
 }

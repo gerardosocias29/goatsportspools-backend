@@ -23,7 +23,7 @@ class RoleAndModuleSeeder extends Seeder
             ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
             ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
             ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
-            ['name' => 'League Standings', 'page' => 'league-standings', 'icon' => 'icon-leagues'],
+            ['name' => 'League Standings', 'page' => 'league-standings', 'icon' => 'icon-league-standings'],
 
             ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history'],
             ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'],

@@ -49,6 +49,7 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'leagues'], function () {
         Route::get('/', [LeagueController::class, 'index']);
+        Route::get('/active-leagues', [LeagueController::class, 'getLeagues']);
         Route::get('/get/{id}', [LeagueController::class, 'getLeagueById']);
         Route::get('/leagues-joined', [LeagueController::class, 'totalLeaguesJoined']);
         Route::get('/leagues-created', [LeagueController::class, 'getLeaguesCreatedCount']);

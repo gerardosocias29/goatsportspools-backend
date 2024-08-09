@@ -184,7 +184,7 @@ class GameController extends Controller
             if ($bet->wager_result === 'win') {
                 if($bet->bet_type == "straight") {
                     $amount = $bet->wager_win_amount + $bet->wager_amount;
-                    LeagueController::updateLeagueUserBalanceHistory($leagueId, $bet->user_id, $amount, 'win');
+                    LeagueController::updateLeagueUserBalanceHistory($bet->league_id, $bet->user_id, $amount, 'win');
                 }
                 if($bet->bet_type == "parlay" && $bet->bet_group_id != null) {
                     $this->checkParlayWinning($bet->bet_group_id, $bet->user_id);   

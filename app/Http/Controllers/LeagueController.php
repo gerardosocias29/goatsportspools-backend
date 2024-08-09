@@ -10,6 +10,44 @@ use Illuminate\Support\Facades\Hash;
 
 class LeagueController extends Controller
 {
+    public function getLeagues(Request $request) {
+        $leagues = League::with(['participants', 'participants.win_bets', 'participants.lose_bets', 'participants.tie_bets'])
+            ->whereHas('participants', function ($query) {
+                $query->orWhereHas('win_bets', function ($query) {
+                    $query->whereColumn('league_id', 'league_participants.league_id');
+                })
+                ->orWhereHas('lose_bets', function ($query) {
+                    $query->whereColumn('league_id', 'league_participants.league_id');
+                })
+                ->orWhereHas('tie_bets', function ($query) {
+                    $query->whereColumn('league_id', 'league_participants.league_id');
+                });
+            })
+            ->get();
+    
+        // Manually calculate win_bets_count for each participant and sort them
+        foreach ($leagues as $league) {
+            // Calculate win_bets_count for each participant
+            foreach ($league->participants as $participant) {
+                $participant->win_bets_count = $participant->win_bets->count(); // Ensure win_bets_count is accurate
+            }
+    
+            // Sort participants by win_bets_count in descending order
+            $sortedParticipants = $league->participants->sortByDesc('win_bets_count');
+            
+            // Reindex participants based on their sorted position
+            $rank = 1;
+            $sortedParticipants->each(function ($participant) use (&$rank) {
+                $participant->rank = $rank++;
+            });
+    
+            // Update the league's participants with the sorted list and new ranks
+            $league->participants = $sortedParticipants;
+        }
+    
+        return response(["status" => true, "leagues" => $leagues]);
+    }    
+
     public function totalLeaguesJoined() {
         $userId = Auth::user()->id;
 
