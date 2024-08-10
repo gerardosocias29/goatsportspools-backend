@@ -26,4 +26,23 @@ class Team extends Model
     {
         return $this->hasMany(Game::class, 'visitor_team_id');
     }
+
+    public function standings()
+    {
+        $winCount = $this->homeGames()->whereColumn('home_team_score', '>', 'visitor_team_score')->count()
+                  + $this->visitorGames()->whereColumn('visitor_team_score', '>', 'home_team_score')->count();
+
+        $loseCount = $this->homeGames()->whereColumn('home_team_score', '<', 'visitor_team_score')->count()
+                   + $this->visitorGames()->whereColumn('visitor_team_score', '<', 'home_team_score')->count();
+
+        $tieCount = $this->homeGames()->whereColumn('home_team_score', '=', 'visitor_team_score')->count()
+                  + $this->visitorGames()->whereColumn('visitor_team_score', '=', 'home_team_score')->count();
+
+        return "$winCount - $loseCount - $tieCount"; 
+        return [
+            'win' => $winCount,
+            'lose' => $loseCount,
+            'tie' => $tieCount,
+        ];
+    }
 }

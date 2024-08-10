@@ -30,7 +30,7 @@ class RoleAndModuleSeeder extends Seeder
 
             ['name' => 'NFL', 'page' => 'games/nfl', 'icon' => 'icon-nfl', 'parent_id' => 2],
             ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 7],
-            ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams    ', 'parent_id' => 7],
+            ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 7],
         ];
 
         // Create the modules and store the IDs

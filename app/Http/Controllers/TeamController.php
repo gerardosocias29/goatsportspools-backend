@@ -11,4 +11,16 @@ class TeamController extends Controller
         $teams = Team::all();
         return response()->json($teams);
     }
+
+    public function teams() {
+        $teams = Team::with(['homeGames', 'visitorGames'])->get()->map(function ($team) {
+            return [
+                'team' => $team,
+                'standings' => $team->standings(),
+            ];
+        });
+
+        return response()->json($teams);
+    }
+    
 }

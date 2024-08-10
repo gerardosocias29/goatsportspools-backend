@@ -79,6 +79,7 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'teams'], function () {
         Route::get('/', [TeamController::class, 'index']);
+        Route::get('/all', [TeamController::class, 'teams']);
     });
 
 });
