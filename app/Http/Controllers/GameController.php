@@ -214,7 +214,7 @@ class GameController extends Controller
 
         $wagerType = WagerType::where('id', $betGroup->wager_type_id)->first();
 
-        $betsWinCount = Bets::where('bet_group_id', $bet_group_id)->where('bet_type', 'parlay')->where('wager_result', 'win')->count();
+        $betsWinCount = Bet::where('bet_group_id', $bet_group_id)->where('bet_type', 'parlay')->where('wager_result', 'win')->count();
         if($betsWinCount == $wagerType->no_of_teams){
             $amount = $betGroup->wager_win_amount + $betGroup->wager_amount;
             LeagueController::updateLeagueUserBalanceHistory($betGroup->league_id, $bet_user_id, $amount, 'win');
