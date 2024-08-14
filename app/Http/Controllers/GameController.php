@@ -20,7 +20,7 @@ class GameController extends Controller
         if($type == "parlay" || $type == "straight"){
             $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
     
-            $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
+            $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
                 ->where(function ($query) {
                     $query->where('home_team_score', '=', 0)
                         ->orWhere('visitor_team_score', '=', 0);
@@ -43,7 +43,7 @@ class GameController extends Controller
             // game.odd.favored_points game.odd.underdog_points, game.odd.over_total game.odd.under_total
             $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
 
-            $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd.favored_team', 'odd.underdog_team'])
+            $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
                 ->where(function ($query) {
                     $query->where('home_team_score', '=', 0)
                         ->orWhere('visitor_team_score', '=', 0);
