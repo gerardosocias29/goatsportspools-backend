@@ -11,7 +11,8 @@ class LeagueParticipant extends Model
 
     protected $fillable = [
         'league_id',
-        'user_id'
+        'user_id',
+        'balance'
     ];
 
     public function user() {
