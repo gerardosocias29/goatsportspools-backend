@@ -57,7 +57,7 @@ class RoleAndModuleSeeder extends Seeder
             [
                 'name' => 'Normal User',
                 'description' => 'Has access to participate in NFL pool and view scores.',
-                'allowed_modules' => [1,2,4,6] // Assign specific module IDs
+                'allowed_modules' => [1,2,4,5,6] // Assign specific module IDs
             ]
         ];
 
