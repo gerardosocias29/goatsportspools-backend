@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Hash;
 class LeagueController extends Controller
 {
     public function getLeagues(Request $request) {
+        $user = Auth::user();
+
         $leagues = League::with(['participants', 'participants.win_bets', 'participants.lose_bets', 'participants.tie_bets'])
             ->whereHas('participants', function ($query) {
                 $query->orWhereHas('win_bets', function ($query) {
@@ -28,6 +30,10 @@ class LeagueController extends Controller
         foreach ($leagues as $league) {
             foreach ($league->participants as $participant) {
                 $participant->balance = $participant->pivot->balance;
+                $participant->you = false;
+                if($participant->id === $user->id){
+                    $participant->you = true;
+                }
             }
     
             $sortedParticipants = $league->participants->sortByDesc('balance');
