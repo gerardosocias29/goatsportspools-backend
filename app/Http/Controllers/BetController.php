@@ -82,6 +82,39 @@ class BetController extends Controller
         return response()->json($paginatedBets);
     }
     
+    public function getOne(Request $request, $user_id) {
+        $betsQuery = Bet::with([
+            'wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team', 
+            'betGroup.bets', 'betGroup.wagerType',
+            'betGroup.bets.wagerType', 'betGroup.bets.game.home_team', 'betGroup.bets.game.visitor_team', 'betGroup.bets.team', 'betGroup.bets.odd.favored_team', 'betGroup.bets.odd.underdog_team'])
+            ->where('user_id', $user_id);
+        $bets = $betsQuery->get();
+
+        $mergedBets = collect();
+        
+        $betsRisk = $betsQuery->where('wager_result', 'pending')->sum('wager_amount');
+        $groupBetRisk = BetGroup::where('wager_result', 'pending')->where('user_id', $user_id)->sum('wager_amount');
+
+        $totalAtRisk = $betsRisk + $groupBetRisk;
+        foreach ($bets as $key => $bet) {
+            if ($bet->bet_group_id) {
+                $existingGroup = $mergedBets->firstWhere('bet_group_id', $bet->bet_group_id);
+                if ($existingGroup) {
+                    // Add bet to existing bet group
+                    $existingGroup->merged_bets->push($bet);
+                } else {
+                    $betCopy = clone $bet;
+                    $betCopy->merged_bets = collect([$bet]);
+                    $mergedBets->push($betCopy);
+                }
+            } else {
+                // No bet group, add as individual bet
+                $mergedBets->push($bet);
+            }
+        }
+
+        return response()->json($mergedBets);
+    }
 
     private function applyFilters($query, $filter) {
         if (!empty($filter->filters->global->value)) {

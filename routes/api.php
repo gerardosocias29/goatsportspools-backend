@@ -75,6 +75,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/', [BetController::class, 'index']);
         Route::post('/wager', [BetController::class, 'store']);
         Route::get('/amount-at-risks', [BetController::class, 'totalAtRisk']);
+        Route::get('/get-one/{user_id}', [BetController::class, 'getOne']);
     });
 
     Route::group(['prefix' => 'teams'], function () {

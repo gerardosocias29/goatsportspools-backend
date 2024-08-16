@@ -13,7 +13,7 @@ class LeagueController extends Controller
     public function getLeagues(Request $request) {
         $user = Auth::user();
 
-        $leagues = League::with(['participants', 'participants.win_bets', 'participants.lose_bets', 'participants.tie_bets'])
+        $leagues = League::with(['participants', 'participants.bets', 'participants.win_bets', 'participants.lose_bets', 'participants.tie_bets'])
             ->whereHas('participants', function ($query) {
                 $query->orWhereHas('win_bets', function ($query) {
                     $query->whereColumn('league_id', 'league_participants.league_id');
