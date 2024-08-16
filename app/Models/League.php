@@ -27,7 +27,7 @@ class League extends Model
     }
 
     public function participants() {
-        return $this->belongsToMany(User::class, 'league_participants');
+        return $this->belongsToMany(User::class, 'league_participants')->withPivot('balance');
     }
 
     public function rebuys() {

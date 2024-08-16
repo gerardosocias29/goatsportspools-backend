@@ -25,23 +25,18 @@ class LeagueController extends Controller
             })
             ->get();
     
-        // Manually calculate win_bets_count for each participant and sort them
         foreach ($leagues as $league) {
-            // Calculate win_bets_count for each participant
             foreach ($league->participants as $participant) {
-                $participant->win_bets_count = $participant->win_bets->count(); // Ensure win_bets_count is accurate
+                $participant->balance = $participant->pivot->balance;
             }
     
-            // Sort participants by win_bets_count in descending order
-            $sortedParticipants = $league->participants->sortByDesc('win_bets_count');
+            $sortedParticipants = $league->participants->sortByDesc('balance');
             
-            // Reindex participants based on their sorted position
             $rank = 1;
             $sortedParticipants->each(function ($participant) use (&$rank) {
                 $participant->rank = $rank++;
             });
     
-            // Update the league's participants with the sorted list and new ranks
             $league->participants = $sortedParticipants;
         }
     
