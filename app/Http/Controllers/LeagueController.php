@@ -13,7 +13,26 @@ class LeagueController extends Controller
     public function getLeagues(Request $request) {
         $user = Auth::user();
 
-        $leagues = League::with(['participants', 'participants.bets', 'participants.win_bets', 'participants.lose_bets', 'participants.tie_bets'])
+        $leagues = League::with(['participants', 'participants.bets', 'participants.bets.game', 
+            'participants.win_bets', 'participants.lose_bets', 'participants.tie_bets',
+
+            'participants.bets.wagerType', 
+            'participants.bets.game',
+            'participants.bets.game.home_team', 
+            'participants.bets.game.visitor_team', 
+            'participants.bets.team', 
+            'participants.bets.odd.favored_team', 
+            'participants.bets.odd.underdog_team', 
+            'participants.bets.betGroup',
+            'participants.bets.betGroup.bets',
+            'participants.bets.betGroup.wagerType',
+            'participants.bets.betGroup.bets.wagerType', 
+            'participants.bets.betGroup.bets.game.home_team', 
+            'participants.bets.betGroup.bets.game.visitor_team', 
+            'participants.bets.betGroup.bets.team', 
+            'participants.bets.betGroup.bets.odd.favored_team', 
+            'participants.bets.betGroup.bets.odd.underdog_team'
+        ])
             ->whereHas('participants', function ($query) {
                 $query->orWhereHas('win_bets', function ($query) {
                     $query->whereColumn('league_id', 'league_participants.league_id');

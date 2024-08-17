@@ -84,18 +84,34 @@ class BetController extends Controller
     
     public function getOne(Request $request, $user_id) {
         $betsQuery = Bet::with([
-            'wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team', 
-            'betGroup.bets', 'betGroup.wagerType',
-            'betGroup.bets.wagerType', 'betGroup.bets.game.home_team', 'betGroup.bets.game.visitor_team', 'betGroup.bets.team', 'betGroup.bets.odd.favored_team', 'betGroup.bets.odd.underdog_team'])
-            ->where('user_id', $user_id);
+            'wagerType', 
+            'game',
+            'game.home_team', 
+            'game.visitor_team', 
+            'team', 
+            'odd.favored_team', 
+            'odd.underdog_team', 
+            'betGroup' => function ($query) {
+                $query->where('wager_result', '!=', 'pending');
+            }, 
+            'betGroup.bets' => function ($query) {
+                $query->where('wager_result', '!=', 'pending');
+            }, 
+            'betGroup.wagerType',
+            'betGroup.bets.wagerType', 
+            'betGroup.bets.game.home_team', 
+            'betGroup.bets.game.visitor_team', 
+            'betGroup.bets.team', 
+            'betGroup.bets.odd.favored_team', 
+            'betGroup.bets.odd.underdog_team'
+        ])
+        ->where('user_id', $user_id)
+        ->where('wager_result', '!=', 'pending');
+        
         $bets = $betsQuery->get();
 
         $mergedBets = collect();
         
-        $betsRisk = $betsQuery->where('wager_result', 'pending')->sum('wager_amount');
-        $groupBetRisk = BetGroup::where('wager_result', 'pending')->where('user_id', $user_id)->sum('wager_amount');
-
-        $totalAtRisk = $betsRisk + $groupBetRisk;
         foreach ($bets as $key => $bet) {
             if ($bet->bet_group_id) {
                 $existingGroup = $mergedBets->firstWhere('bet_group_id', $bet->bet_group_id);
