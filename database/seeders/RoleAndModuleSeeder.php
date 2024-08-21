@@ -19,18 +19,19 @@ class RoleAndModuleSeeder extends Seeder
 
         // Define role modules first
         $modules = [
-            ['name' => 'Dashboard', 'page' => 'dashboard', 'icon' => 'icon-dashboard'],
-            ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
-            ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
-            ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
-            ['name' => 'League Standings', 'page' => 'league-standings', 'icon' => 'icon-league-standings'],
-
+            // ['name' => 'Dashboard', 'page' => 'dashboard', 'icon' => 'icon-dashboard'],
+            // ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
+            ['name' => 'NFL', 'page' => 'games/nfl', 'icon' => 'icon-nfl'],
             ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history'],
-            ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'],
+            ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
+            ['name' => 'Standings', 'page' => 'league-standings', 'icon' => 'icon-league-standings'],
+            ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
 
-            ['name' => 'NFL', 'page' => 'games/nfl', 'icon' => 'icon-nfl', 'parent_id' => 2],
-            ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 7],
-            ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 7],
+            ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'],
+            ['name' => 'How It Works', 'page' => '', 'icon' => 'icon-hiw'],
+
+            ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 6],
+            ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 6],
         ];
 
         // Create the modules and store the IDs
