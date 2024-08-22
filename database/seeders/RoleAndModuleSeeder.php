@@ -53,12 +53,12 @@ class RoleAndModuleSeeder extends Seeder
             [
                 'name' => 'League Admin',
                 'description' => 'Manages league settings and user permissions.',
-                'allowed_modules' => [1,2,4,5] // Assign specific module IDs
+                'allowed_modules' => [1,2,4,5,7] // Assign specific module IDs
             ],
             [
                 'name' => 'Normal User',
                 'description' => 'Has access to participate in NFL pool and view scores.',
-                'allowed_modules' => [1,2,4,5] // Assign specific module IDs
+                'allowed_modules' => [1,2,4,5,7] // Assign specific module IDs
             ]
         ];
 
