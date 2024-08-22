@@ -318,7 +318,7 @@ class GameController extends Controller
     public function create(Request $request) {
         $user = Auth::user();
 
-        if($user->role_id != 1) {
+        if($user->role_id == 3) {
             return response()->json(["status" => false, "message" => "You don't have enough permissions to create game."]);
         }
 
