@@ -28,7 +28,7 @@ class RoleAndModuleSeeder extends Seeder
             ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
 
             ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'],
-            ['name' => 'How It Works', 'page' => '', 'icon' => 'icon-hiw'],
+            ['name' => 'How It Works', 'page' => 'how-it-works', 'icon' => 'icon-hiw'],
 
             ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 6],
             ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 6],
