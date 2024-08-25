@@ -395,4 +395,12 @@ class GameController extends Controller
 
         return response()->json(["status" => true, "message" => "Game updated successfully."]);
     }
+
+    public function getDoneGames() {
+        $games = Game::where('home_team_score', '!=', 0)->orWhere('visitor_team_score', '!=', 0)
+            ->orderBy('game_datetime', 'DESC')
+            ->get();
+
+        return response()->json($games);
+    }
 }
