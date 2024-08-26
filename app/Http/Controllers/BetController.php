@@ -34,8 +34,8 @@ class BetController extends Controller
         $betsQuery = Bet::with([
             'wagerType', 'game.home_team', 'game.visitor_team', 'team', 'odd.favored_team', 'odd.underdog_team', 
             'betGroup.bets', 'betGroup.wagerType',
-            'betGroup.bets.wagerType', 'betGroup.bets.game.home_team', 'betGroup.bets.game.visitor_team', 'betGroup.bets.team', 'betGroup.bets.odd.favored_team', 'betGroup.bets.odd.underdog_team'])
-            ->where('user_id', $userId);
+            'betGroup.bets.wagerType', 'betGroup.bets.game.home_team', 'betGroup.bets.game.visitor_team', 'betGroup.bets.team', 'betGroup.bets.odd.favored_team', 'betGroup.bets.odd.underdog_team'
+        ])->where('user_id', $userId);
     
         // Apply filters and order by
         $betsQuery = $this->applyFilters($betsQuery->orderBy('id', 'DESC'), $filter);
@@ -44,12 +44,13 @@ class BetController extends Controller
         $bets = $betsQuery->get();
     
         $mergedBets = collect();
-        
+    
         $betsRisk = $betsQuery->where('wager_result', 'pending')->sum('wager_amount');
         $groupBetRisk = BetGroup::where('wager_result', 'pending')->where('user_id', $userId)->sum('wager_amount');
-
+    
         $totalAtRisk = $betsRisk + $groupBetRisk;
-        foreach ($bets as $key => $bet) {
+    
+        foreach ($bets as $bet) {
             if ($bet->bet_group_id) {
                 $existingGroup = $mergedBets->firstWhere('bet_group_id', $bet->bet_group_id);
                 if ($existingGroup) {
@@ -66,21 +67,15 @@ class BetController extends Controller
             }
         }
     
-        // Paginate the merged bets
-        $page = $filter->page + 1;
-        $rows = $filter->rows;
-        $paginatedBets = new \Illuminate\Pagination\LengthAwarePaginator(
-            $mergedBets->forPage($page, $rows),
-            $mergedBets->count(),
-            $rows,
-            $page,
-            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
-        );
-
-        $paginatedBets->appends(['total_at_risk' => $totalAtRisk]);
+        // Prepare the response with all data and count
+        $response = [
+            'data' => $mergedBets,
+            'total' => $mergedBets->count(),
+            'total_at_risk' => $totalAtRisk,
+        ];
     
-        return response()->json($paginatedBets);
-    }
+        return response()->json($response);
+    }    
     
     public function getOne(Request $request, $user_id) {
         $betsQuery = Bet::with([
