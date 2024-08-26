@@ -180,6 +180,10 @@ class BetController extends Controller
             $wagerTypeName = count($request->bets).$wagerTypeNameExt;
             $wagerType = WagerType::where('name', $wagerTypeName)->first();
 
+            if ($request->wager_amount > $currentBalance) {
+                return response()->json(["status" => false, "message" => "Insufficient balance to place bets."]);
+            }
+
             $betGroup = new BetGroup();
             $betGroup->user_id = $user->id;
             $betGroup->wager_type_id = $wagerType->id;
