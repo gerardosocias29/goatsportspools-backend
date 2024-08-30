@@ -10,6 +10,18 @@ use Illuminate\Database\Eloquent\Builder;
 
 class UserController extends Controller
 {   
+    public function getData() {
+        $total_players = User::where('role_id', '!=', 1)->count();
+        $total_buyin = BalanceHistory::where('type', 'buyin')->where('amount', 3000)->count();
+        $total_rebuys = BalanceHistory::where('type', 'rebuy')->count();
+
+        return response()->json([
+            "p" => $total_players,
+            "b" => $total_buyin,
+            "r" => $total_rebuys,
+        ]);
+    }
+
     public function validate_token() {
         $user = Auth::user();
         return response()->json(["status" => true, "message" => "Authenticated!"]);
