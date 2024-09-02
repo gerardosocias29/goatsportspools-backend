@@ -65,7 +65,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/rebuy', [LeagueController::class, 'rebuy']);
         Route::post('/buyin', [LeagueController::class, 'buyin']);
         Route::delete('/delete/{league_id}', [LeagueController::class, 'update']);
-
+        Route::get('/default', [LeagueController::class, 'getDefaultLeague']);
 
     });
 

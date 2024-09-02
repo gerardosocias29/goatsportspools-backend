@@ -302,4 +302,13 @@ class LeagueController extends Controller
         return true;
     }    
 
+
+    public function getDefaultLeague(Request $request) {
+        $league_id = env('DEFAULT_LEAGUE_ID', 2);
+
+        $league = League::where('id', $league_id)->first();
+
+        return response()->json($league);
+    }
+
 }
