@@ -2,8 +2,11 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, UserController, LeagueController, GameController, BetController, TeamController};
+use App\Http\Controllers\{AuthController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
 use Illuminate\Support\Facades\Artisan;
+
+
+Route::post('/contact-us/send', [ContactUsController::class, 'send']);
 
 Route::get('/seed-database', function () {
     try {
