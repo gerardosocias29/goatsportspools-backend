@@ -6,11 +6,14 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\ContactUsMail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Auth;
 
 class ContactUsController extends Controller
 {
     public function send(Request $request)
     {
+        $user = Auth::user();
+
         $key = 'contact-us-' . $request->session()->getId();
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
@@ -40,6 +43,11 @@ class ContactUsController extends Controller
 
         // Get the validated data
         $data = $validator->validated();
+
+        if(!empty($user)){
+            $data['username'] = $user->username;
+            $data['useremail'] = $user->email;
+        }
 
         // Send an email or store the data
         try {
