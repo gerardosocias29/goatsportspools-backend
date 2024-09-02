@@ -14,7 +14,7 @@ class ContactUsController extends Controller
     {
         $user = Auth::user();
 
-        $key = 'contact-us-' . $request->session()->getId();
+        $key = 'contact-us-' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             return response()->json([
@@ -44,6 +44,9 @@ class ContactUsController extends Controller
         // Get the validated data
         $data = $validator->validated();
 
+        $data['username'] = "";
+        $data['useremail'] = "";
+        
         if(!empty($user)){
             $data['username'] = $user->username;
             $data['useremail'] = $user->email;
@@ -61,6 +64,7 @@ class ContactUsController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to send your message, please try again later.',
+                'detail' => $e->getMessage()
             ]);
         }
     }
