@@ -25,9 +25,9 @@ class ContactUsController extends Controller
 
         // Validate the request data
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'message' => 'required|string|max:2000',
+            'name' => 'required|string|min:2|max:255',
+            'email' => 'required|email|min:2|max:255',
+            'message' => 'required|string|min:2|max:2000',
         ]);
 
         if ($validator->fails()) {
@@ -46,7 +46,7 @@ class ContactUsController extends Controller
 
         $data['username'] = "";
         $data['useremail'] = "";
-        
+        $data['subject'] = "GOAT Message from " . $data['name'];
         if(!empty($user)){
             $data['username'] = $user->username;
             $data['useremail'] = $user->email;
