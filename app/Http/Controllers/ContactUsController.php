@@ -44,14 +44,10 @@ class ContactUsController extends Controller
         // Get the validated data
         $data = $validator->validated();
 
-        $data['username'] = "";
-        $data['useremail'] = "";
+        $data['username'] = $user ? $user->username : "";
+        $data['useremail'] = $user ? $user->email : "";
         $data['subject'] = "GOAT Message from " . $data['name'];
-        if(!empty($user)){
-            $data['username'] = $user->username;
-            $data['useremail'] = $user->email;
-        }
-
+        
         // Send an email or store the data
         try {
             Mail::to(["goatadmin@goatsportspools.com", "MarkrMahomes@gmail.com", "titoysemail@yahoo.com", "gerardo@goatsportspools.com"])->send(new ContactUsMail($data));
