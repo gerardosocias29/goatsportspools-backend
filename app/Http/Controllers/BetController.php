@@ -15,8 +15,8 @@ class BetController extends Controller
         $betsRisk = 0;
         $betGroupRisks = 0;
 
-        $betsRisks = Bet::where('user_id', $user->id)->where('wager_result', 'pending')->sum('wager_amount');
-        $betGroupRisks = BetGroup::where('user_id', $user->id)->where('wager_result', 'pending')->sum('wager_amount');
+        $betsRisks = Bet::where('user_id', $user->id)->where('wager_result', 'pending')->get()->sum('wager_amount');
+        $betGroupRisks = BetGroup::where('user_id', $user->id)->where('wager_result', 'pending')->get()->sum('wager_amount');
 
         $totalBalance = LeagueParticipant::where('user_id', $user->id)
             ->selectRaw("SUM(balance) as total_balance")
@@ -24,10 +24,11 @@ class BetController extends Controller
             ->pluck('total_balance')
             ->first();
 
-        return response()->json(["status" => true, "at_risk" => $betsRisk + $betGroupRisks, 'total_balance' => $totalBalance]);
+        return response()->json(["status" => true, "at_risk" => $betsRisks + $betGroupRisks, 'betGroupRisks' => $betGroupRisks, 'total_balance' => $totalBalance]);
     }
 
-    public function index(Request $request) {
+    public function index(Request $request, $type) {
+        
         $userId = Auth::user()->id;
     
         $filter = json_decode($request->filter);
@@ -36,6 +37,20 @@ class BetController extends Controller
             'betGroup.bets', 'betGroup.wagerType',
             'betGroup.bets.wagerType', 'betGroup.bets.game.home_team', 'betGroup.bets.game.visitor_team', 'betGroup.bets.team', 'betGroup.bets.odd.favored_team', 'betGroup.bets.odd.underdog_team'
         ])->where('user_id', $userId);
+
+        if ($type == "open") {
+            // Show only pending wagers
+            $betsQuery->where('wager_result', 'pending')
+                      ->orWhereHas('betGroup', function($query) use ($userId) {
+                          $query->where('wager_result', 'pending')->where('user_id', $userId);
+                      });
+        } else {
+            // Show only non-pending wagers
+            $betsQuery->where('wager_result', '!=', 'pending')
+                      ->orWhereHas('betGroup', function($query) use ($userId) {
+                          $query->where('wager_result', '!=', 'pending')->where('user_id', $userId);
+                      });
+        }
     
         // Apply filters and order by
         $betsQuery = $this->applyFilters($betsQuery->orderBy('id', 'DESC'), $filter);
@@ -44,11 +59,6 @@ class BetController extends Controller
         $bets = $betsQuery->get();
     
         $mergedBets = collect();
-    
-        $betsRisk = $betsQuery->where('wager_result', 'pending')->sum('wager_amount');
-        $groupBetRisk = BetGroup::where('wager_result', 'pending')->where('user_id', $userId)->sum('wager_amount');
-    
-        $totalAtRisk = $betsRisk + $groupBetRisk;
     
         foreach ($bets as $bet) {
             if ($bet->bet_group_id) {
@@ -71,7 +81,6 @@ class BetController extends Controller
         $response = [
             'data' => $mergedBets,
             'total' => $mergedBets->count(),
-            'total_at_risk' => $totalAtRisk,
         ];
     
         return response()->json($response);

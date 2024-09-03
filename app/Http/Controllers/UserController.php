@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\{User, Role, RoleModule, BalanceHistory};
+use App\Models\{User, Role, RoleModule, BalanceHistory, LeagueParticipant};
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -30,9 +30,31 @@ class UserController extends Controller
     public function me_user() {
         $user = Auth::user();
         $roles = Role::where('id', $user->role_id)->first();
-        $modules = RoleModule::with(['sub_modules'])->whereIn('id', $roles->allowed_modules)->select('name', 'page', 'icon', 'id', 'parent_id')->get();
-
+        
+        $modules = RoleModule::with(['sub_modules'])
+            ->whereIn('id', $roles->allowed_modules)
+            ->select('name', 'page', 'icon', 'id', 'parent_id')
+            ->get();
+        // Check if user has role_id = 3
+        if ($user->role_id == 3 && $user->role_id == 2) {
+            // Check if user is in a league
+            $isInLeague = LeagueParticipant::where('user_id', $user->id)->exists();
+            
+            if ($isInLeague) {
+                // If user is in a league, only show module ids [2, 3, 5]
+                $modules = $modules->filter(function($module) {
+                    return in_array($module->id, [1, 2, 3, 5, 8]);
+                });
+            } else {
+                // If user is not in a league, hide module ids [2, 3, 5]
+                $modules = $modules->filter(function($module) {
+                    return !in_array($module->id, [2, 3, 5]);
+                });
+            }
+        }
+        $modules = $modules->values();
         $user->modules = $modules;
+
         return response()->json(["status" => true, "user" => $user]);
     }
 
