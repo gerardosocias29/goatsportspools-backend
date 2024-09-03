@@ -36,7 +36,7 @@ class UserController extends Controller
             ->select('name', 'page', 'icon', 'id', 'parent_id')
             ->get();
         // Check if user has role_id = 3
-        if ($user->role_id == 3 && $user->role_id == 2) {
+        if ($user->role_id == 3 || $user->role_id == 2) {
             // Check if user is in a league
             $isInLeague = LeagueParticipant::where('user_id', $user->id)->exists();
             
@@ -45,14 +45,18 @@ class UserController extends Controller
                 $modules = $modules->filter(function($module) {
                     return in_array($module->id, [1, 2, 3, 5, 8]);
                 });
+                $modules = $modules->values();
+
             } else {
                 // If user is not in a league, hide module ids [2, 3, 5]
                 $modules = $modules->filter(function($module) {
                     return !in_array($module->id, [2, 3, 5]);
                 });
+                $modules = $modules->values();
+
             }
         }
-        $modules = $modules->values();
+
         $user->modules = $modules;
 
         return response()->json(["status" => true, "user" => $user]);
