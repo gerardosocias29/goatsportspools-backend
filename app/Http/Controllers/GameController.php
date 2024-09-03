@@ -13,12 +13,12 @@ class GameController extends Controller
         $user = Auth::user();
     
         $filter = json_decode($request->filter);
-
+    
         $type = $request->type;
-        
+    
         $tease_point = $type == "teaser_6" ? 6 : ($type == "teaser_6_5" ? 6.5 : ($type == "teaser_7" ? 7 : 0));
-        if($type == null || $type == "parlay" || $type == "straight"){
-            $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
+        if ($type == null || $type == "parlay" || $type == "straight") {
+            $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
     
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
                 ->where(function ($query) {
@@ -26,32 +26,34 @@ class GameController extends Controller
                         ->orWhere('visitor_team_score', '=', 0);
                 })
                 ->orderBy('game_datetime', 'ASC');
-
-            if($user->role_id != 1){
-                $gamesQuery->where('game_datetime', '>', $oneHourAgo);
+    
+            if ($user->role_id != 1) {
+                $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
+                // change to 1 minute and betting 9 mins 
+                // nfl and how it works only when not in league
+                // remove parlay and teaser
             } else {
                 $gamesQuery->where('visitor_team_score', '<', 1);
                 $gamesQuery->orWhere('home_team_score', '<', 1);
             }
-        
+    
             $gamesQuery = $this->applyFilters($gamesQuery, $filter);
             $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
-        
+    
             return response()->json($games);
         } else {
             // adjust tease points, 
             // game.odd.favored_points game.odd.underdog_points, game.odd.over_total game.odd.under_total
-            $oneHourAgo = \Carbon\Carbon::now()->subHour()->toDateTimeString();
-
+            $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
+    
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
                 ->where(function ($query) {
                     $query->where('home_team_score', '=', 0)
                         ->orWhere('visitor_team_score', '=', 0);
                 })
                 ->orderBy('game_datetime', 'ASC');
-            
             if($user->role_id != 1){
-                $gamesQuery->where('game_datetime', '>', $oneHourAgo);
+                $gamesQuery->where('game_datetime', '>', $oneMinuteAgo);
             } else {
                 $gamesQuery->where('visitor_team_score', '<', 1);
                 $gamesQuery->orWhere('home_team_score', '<', 1);
@@ -78,12 +80,10 @@ class GameController extends Controller
                 $currentPage,
                 ['path' => request()->url(), 'query' => request()->query()]
             );
-
+    
             return response()->json($paginatedGames);
         }
-
-        
-    }
+    }    
 
     private function applyFilters($query, $filter) {
         if (!empty($filter->filters->global->value)) {
