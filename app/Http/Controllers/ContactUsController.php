@@ -12,7 +12,7 @@ class ContactUsController extends Controller
 {
     public function send(Request $request)
     {
-        $user = Auth::user();
+        $user = Auth::guard('api')->user();
 
         $key = 'contact-us-' . $request->ip();
 
@@ -55,6 +55,7 @@ class ContactUsController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Your message has been sent successfully!',
+                'user' => $user
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
