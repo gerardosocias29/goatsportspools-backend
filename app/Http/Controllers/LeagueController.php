@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{League, LeagueParticipant, BalanceHistory};
+use App\Models\{League, LeagueParticipant, BalanceHistory, Bet, BetGroup};
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -48,8 +48,19 @@ class LeagueController extends Controller
     
         foreach ($leagues as $league) {
             foreach ($league->participants as $participant) {
-                $participant->balance = $participant->pivot->balance;
+                $betsRisk = Bet::where('user_id', $participant->id)
+                    ->where('wager_result', 'pending')
+                    ->sum('wager_amount');
+
+                $betGroupRisks = BetGroup::where('user_id', $participant->id)
+                    ->where('wager_result', 'pending')
+                    ->sum('wager_amount');
+
+
+                $participant->balance = ($participant->pivot->balance + $betsRisk + $betGroupRisks);
                 $participant->you = false;
+                $participant->betsrisk = $betsRisk;
+                $participant->betgrouprisk = $betGroupRisks;
                 if($participant->id === $user->id){
                     $participant->you = true;
                 }
