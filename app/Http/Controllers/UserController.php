@@ -136,6 +136,7 @@ class UserController extends Controller
             $newUser->avatar = $user->avatar ?? '';
 
             $newUser->save();
+
         } else {
             $newUser->name = $user->full_name ?? '';
             $newUser->phone = $user->phone ?? '';

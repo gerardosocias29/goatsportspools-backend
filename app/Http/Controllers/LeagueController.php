@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{League, LeagueParticipant, BalanceHistory, Bet, BetGroup};
+use App\Models\{League, LeagueParticipant, BalanceHistory, Bet, BetGroup, User};
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NewUserMail;
 
 class LeagueController extends Controller
 {
@@ -205,7 +208,7 @@ class LeagueController extends Controller
         // $leagueParticipant->balance = 25000;
         $leagueParticipant->save();
 
-        self::updateLeagueUserBalanceHistory($league->id, Auth::user()->id, 25000, 'initial');
+        self::updateLeagueUserBalanceHistory($league->id, Auth::user()->id, 3000, 'initial');
 
         return response()->json(["status" => true, "message" => "League created successfully."]);
     }
@@ -255,7 +258,8 @@ class LeagueController extends Controller
             return response()->json(["status" => false, 'message' => 'Unable to join the league. Check if you have correct League ID and Password.']);
         }
 
-        $userId = Auth::user()->id;
+        $user = Auth::user();
+        $userId = $user->id;
 
         $leagueParticipant = new LeagueParticipant();
         $leagueParticipant->league_id = $league->id;
@@ -264,6 +268,13 @@ class LeagueController extends Controller
         $leagueParticipant->save();
 
         self::updateLeagueUserBalanceHistory($league->id, $userId, 3000, 'initial');
+
+        $data['name'] = $user ? $user->name : "";
+        $data['email'] = $user ? $user->email : "";
+        $data['phone'] = $user ? $user->phone : "";
+        $data['subject'] = "A user has joined " . $league->name;
+
+        Mail::to(["join@goatsportspools.com", "MarkrMahomes@gmail.com", "titoysemail@yahoo.com", "bnyderrick@outlook.com", "gerardo@goatsportspools.com"])->send(new NewUserMail($data));
 
         return response()->json(['message' => 'Successfully joined the league.', "status" => true]);
     }
