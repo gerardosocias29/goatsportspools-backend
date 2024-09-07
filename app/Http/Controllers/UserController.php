@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 class UserController extends Controller
 {   
     public function getData() {
-        $total_players = User::where('role_id', '!=', 1)->count();
+        $total_players = LeagueParticipant::count();
         $total_buyin = BalanceHistory::where('type', 'buyin')->where('amount', 3000)->count();
         $total_rebuys = BalanceHistory::where('type', 'rebuy')->count();
 
