@@ -75,6 +75,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/create', [GameController::class, 'create']);
         Route::post('/update/{id}', [GameController::class, 'update']);
         Route::get('/recent', [GameController::class, 'getDoneGames']);
+        Route::get('/manage', [GameController::class, 'getGames']);
     });
 
     Route::group(['prefix' => 'bets'], function () {
