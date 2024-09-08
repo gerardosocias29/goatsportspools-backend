@@ -21,7 +21,7 @@ class RoleAndModuleSeeder extends Seeder
         $modules = [
             // ['name' => 'Dashboard', 'page' => 'dashboard', 'icon' => 'icon-dashboard'],
             // ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
-            ['name' => 'NFL', 'page' => 'games/nfl', 'icon' => 'icon-nfl'],
+            ['name' => 'NFL', 'page' => '', 'icon' => 'icon-nfl'],
             ['name' => 'Open Bets', 'page' => 'open-bets', 'icon' => 'icon-bet-history'],
             ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history'],
             ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
@@ -33,6 +33,9 @@ class RoleAndModuleSeeder extends Seeder
 
             ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 7],
             ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 7],
+
+            ['name' => 'Games', 'page' => 'games/nfl', 'icon' => 'icon-games', 'parent_id' => 1],
+            ['name' => 'Game History', 'page' => 'games/history', 'icon' => 'icon-history', 'parent_id' => 1],
         ];
 
         // Create the modules and store the IDs

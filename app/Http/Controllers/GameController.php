@@ -48,13 +48,9 @@ class GameController extends Controller
             $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
     
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
-                ->orderByRaw('
-                    CASE 
-                        WHEN game_datetime > ? THEN 0 -- Future games first
-                        ELSE 1 -- Past games later
-                    END
-                ', [$oneMinuteAgo])
-                ->orderByRaw('CASE WHEN home_team_score = 0 AND visitor_team_score = 0 THEN 0 ELSE 1 END')  // Within each category, order games with 0 scores first
+                ->where('game_datetime', '>', $oneMinuteAgo)
+                ->where('visitor_team_score', '<', 1)
+                ->where('home_team_score', '<', 1)
                 ->orderBy('game_datetime', 'ASC');
     
             $gamesQuery = $this->applyFilters($gamesQuery, $filter);
@@ -67,13 +63,9 @@ class GameController extends Controller
             $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
     
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
-                ->orderByRaw('
-                    CASE 
-                        WHEN game_datetime > ? THEN 0 -- Future games first
-                        ELSE 1 -- Past games later
-                    END
-                ', [$oneMinuteAgo])
-                ->orderByRaw('CASE WHEN home_team_score = 0 AND visitor_team_score = 0 THEN 0 ELSE 1 END')  // Within each category, order games with 0 scores first
+                ->where('game_datetime', '>', $oneMinuteAgo)
+                ->where('visitor_team_score', '<', 1)
+                ->where('home_team_score', '<', 1)
                 ->orderBy('game_datetime', 'ASC');
 
             $games = $gamesQuery->get();
@@ -414,10 +406,14 @@ class GameController extends Controller
     }
 
     public function getDoneGames() {
-        $games = Game::where('home_team_score', '!=', 0)->orWhere('visitor_team_score', '!=', 0)
+        $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
+    
+        // Get games that have already started (game_datetime is <= one minute ago), regardless of the score
+        $games = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
+            ->where('game_datetime', '<=', $oneMinuteAgo)
             ->orderBy('game_datetime', 'DESC')
             ->get();
-
+    
         return response()->json($games);
     }
 }
