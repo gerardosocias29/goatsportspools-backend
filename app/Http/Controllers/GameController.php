@@ -23,12 +23,12 @@ class GameController extends Controller
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
                 ->orderBy('game_datetime', 'ASC');
     
-            // if ($user->role_id != 1) {
-            //     $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
-            // } else {
-            //     $gamesQuery->where('visitor_team_score', '<', 1);
-            //     $gamesQuery->orWhere('home_team_score', '<', 1);
-            // }
+            if ($user->role_id != 1) {
+                $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
+            } else {
+                $gamesQuery->where('visitor_team_score', '<', 1);
+                $gamesQuery->orWhere('home_team_score', '<', 1);
+            }
     
             $gamesQuery = $this->applyFilters($gamesQuery, $filter);
             $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
@@ -42,12 +42,12 @@ class GameController extends Controller
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
                 ->orderBy('game_datetime', 'ASC');
     
-            // if ($user->role_id != 1) {
-            //     $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
-            // } else {
-            //     $gamesQuery->where('visitor_team_score', '<', 1);
-            //     $gamesQuery->orWhere('home_team_score', '<', 1);
-            // }
+            if ($user->role_id != 1) {
+                $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
+            } else {
+                $gamesQuery->where('visitor_team_score', '<', 1);
+                $gamesQuery->orWhere('home_team_score', '<', 1);
+            }
     
             $gamesQuery = $this->applyFilters($gamesQuery, $filter);
 
