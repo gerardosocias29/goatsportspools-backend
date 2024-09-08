@@ -24,7 +24,7 @@ class GameController extends Controller
                 ->orderBy('game_datetime', 'ASC');
     
             if ($user->role_id != 1) {
-                $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
+                $gamesQuery->where('game_datetime', '<', $oneMinuteAgo); 
             } else {
                 $gamesQuery->where('visitor_team_score', '<', 1);
                 $gamesQuery->orWhere('home_team_score', '<', 1);
@@ -43,7 +43,7 @@ class GameController extends Controller
                 ->orderBy('game_datetime', 'ASC');
     
             if ($user->role_id != 1) {
-                $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
+                $gamesQuery->where('game_datetime', '<', $oneMinuteAgo); 
             } else {
                 $gamesQuery->where('visitor_team_score', '<', 1);
                 $gamesQuery->orWhere('home_team_score', '<', 1);
