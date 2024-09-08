@@ -158,7 +158,11 @@ class LeagueController extends Controller
             }
             if ($roleId != 3) {
                 $league->total_users = $league->participants()->count();
+                $league->old_password = $league->password;
+            } else {
+                unset($league->password);
             }
+            
             return $league;
         });
     
@@ -197,7 +201,7 @@ class LeagueController extends Controller
         $validatedData['league_id'] = generateFormattedString();
 
         if (!empty($validatedData['password'])) {
-            $validatedData['password'] = bcrypt($request->input('password'));
+            $validatedData['password'] = $request->input('password');
         }
 
         $league = League::create($validatedData);
@@ -220,20 +224,18 @@ class LeagueController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'user_id' => 'nullable|integer',
+            'password' => 'required'
         ]);
 
         $league = League::find($league_id);
-
-        if (!empty($validatedData['password']) && $validatedData['password'] != null) {
-            $league->password = bcrypt($validatedData['password']); // Assuming password should be hashed
-        }
+        $league->password = $validatedData['password'];
 
         if (!empty($validatedData['user_id']) && $validatedData['user_id'] != null && $user->role_id == 1) {
             $league->user_id = $validatedData['user_id'];
         }
 
         $league->update($validatedData);
-        return response()->json(["status" => true, "message" => "League updated successfully."]);
+        return response()->json(["status" => true, "message" => "League updated successfully.", 'password' => $league->password ?? null, "new" => $validatedData['password'] ]);
     }
 
     public function destroy(Request $request, $league_id)
@@ -254,7 +256,7 @@ class LeagueController extends Controller
 
         $league = League::where('league_id', $leagueId)->first();
 
-        if (!$league || !Hash::check($password, $league->password)) {
+        if (!$league || !($password === $league->password)) {
             return response()->json(["status" => false, 'message' => 'Unable to join the league. Check if you have correct League ID and Password.']);
         }
 
@@ -326,11 +328,18 @@ class LeagueController extends Controller
 
 
     public function getDefaultLeague(Request $request) {
+        $roleId = $request->user()->role_id;
+
         $league_id = env('DEFAULT_LEAGUE_ID', 2);
-
         $league = League::where('id', $league_id)->first();
-
-        return response()->json($league);
+    
+        $leagueData = $league ? $league->toArray() : [];
+    
+        if ($roleId == 1 || $roleId == 2) {
+            $leagueData['password'] = $league->password;
+        } else {
+            unset($leagueData['password']);
+        }
+        return response()->json($leagueData);
     }
-
 }
