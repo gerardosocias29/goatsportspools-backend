@@ -21,17 +21,14 @@ class GameController extends Controller
             $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
     
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
-                ->orderByRaw('
-                    CASE 
-                        WHEN game_datetime > ? THEN 0 -- Future games first
-                        ELSE 1 -- Past games later
-                    END
-                ', [$oneMinuteAgo])
-                ->orderByRaw('CASE WHEN home_team_score = 0 AND visitor_team_score = 0 THEN 0 ELSE 1 END')  // Within each category, order games with 0 scores first
                 ->orderBy('game_datetime', 'ASC');
-            
-            $gamesQuery = $this->applyFilters($gamesQuery, $filter);
-            $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
+    
+            // if ($user->role_id != 1) {
+            //     $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
+            // } else {
+            //     $gamesQuery->where('visitor_team_score', '<', 1);
+            //     $gamesQuery->orWhere('home_team_score', '<', 1);
+            // }
     
             $gamesQuery = $this->applyFilters($gamesQuery, $filter);
             $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
@@ -43,14 +40,16 @@ class GameController extends Controller
             $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
     
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
-                ->orderByRaw('
-                    CASE 
-                        WHEN game_datetime > ? THEN 0 -- Future games first
-                        ELSE 1 -- Past games later
-                    END
-                ', [$oneMinuteAgo])
-                ->orderByRaw('CASE WHEN home_team_score = 0 AND visitor_team_score = 0 THEN 0 ELSE 1 END')  // Within each category, order games with 0 scores first
                 ->orderBy('game_datetime', 'ASC');
+    
+            // if ($user->role_id != 1) {
+            //     $gamesQuery->where('game_datetime', '>', $oneMinuteAgo); 
+            // } else {
+            //     $gamesQuery->where('visitor_team_score', '<', 1);
+            //     $gamesQuery->orWhere('home_team_score', '<', 1);
+            // }
+    
+            $gamesQuery = $this->applyFilters($gamesQuery, $filter);
 
             $games = $gamesQuery->get();
 
