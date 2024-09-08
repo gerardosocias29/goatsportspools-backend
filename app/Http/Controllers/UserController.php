@@ -43,7 +43,7 @@ class UserController extends Controller
             if ($isInLeague) {
                 // If user is in a league, only show module ids [2, 3, 5]
                 $modules = $modules->filter(function($module) {
-                    return in_array($module->id, [1, 2, 3, 5, 8]);
+                    return in_array($module->id, $user->role_id == 3 ? [1, 2, 3, 5, 8] : [1, 2, 3, 5, 6, 7, 8]);
                 });
                 $modules = $modules->values();
 
