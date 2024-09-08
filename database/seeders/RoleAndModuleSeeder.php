@@ -22,7 +22,7 @@ class RoleAndModuleSeeder extends Seeder
             // ['name' => 'Dashboard', 'page' => 'dashboard', 'icon' => 'icon-dashboard'],
             // ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
             ['name' => 'Games', 'page' => 'games/nfl', 'icon' => 'icon-games'],
-            ['name' => 'Open Bets', 'page' => 'open-bets', 'icon' => 'icon-bet-history'],
+            ['name' => 'Open Bets', 'page' => 'open-bets', 'icon' => 'icon-bet-history'], 
             ['name' => 'Game History', 'page' => 'games/history', 'icon' => 'icon-history'],
             ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history'],
             ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
@@ -61,7 +61,7 @@ class RoleAndModuleSeeder extends Seeder
             [
                 'name' => 'Normal User',
                 'description' => 'Has access to participate in NFL pool and view scores.',
-                'allowed_modules' => [1,2,3,4,7,8]  // Assign specific module IDs
+                'allowed_modules' => [1,2,3,4,6,9]  // Assign specific module IDs
             ]
         ];
 
