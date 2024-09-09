@@ -203,53 +203,55 @@ class TeamsSeeder extends Seeder
                 'code' => 'PIT',
                 'conference' => 'AFC',
                 'nickname' => 'Steelers',
-                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/jwzyzxrdfzpmlw35kn9u',
+                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/znzbzy92etugdbtf3m3g',
             ],
             [
                 'name' => 'San Francisco 49ers',
                 'code' => 'SF',
                 'conference' => 'NFC',
                 'nickname' => '49ers',
-                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/xtuljknt1jfrerdujovg',
+                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/su7teey9hg5jncmx154m',
             ],
             [
                 'name' => 'Seattle Seahawks',
                 'code' => 'SEA',
                 'conference' => 'NFC',
                 'nickname' => 'Seahawks',
-                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/eh8w95lu2enod7bb2jhe',
+                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/zmbnlawu8kebfownqlt0',
             ],
             [
                 'name' => 'Tampa Bay Buccaneers',
                 'code' => 'TB',
                 'conference' => 'NFC',
                 'nickname' => 'Buccaneers',
-                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/a0fljvgs9wctbwkivftj',
+                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/ew8qbdsmxvcepmbz74vf',
             ],
             [
                 'name' => 'Tennessee Titans',
                 'code' => 'TEN',
                 'conference' => 'AFC',
                 'nickname' => 'Titans',
-                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/gyav7vqi3lgt0zjtiz1g',
+                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/cilwhtr1wnhcxmccdwrc',
             ],
             [
                 'name' => 'Washington Commanders',
                 'code' => 'WAS',
                 'conference' => 'NFC',
                 'nickname' => 'Commanders',
-                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/um4nljrwmnb8xd01ywp0',
+                'background_url' => 'https://static.www.nfl.com/image/private/f_auto/league/tcck1wghs3bhoy0c3q3c',
             ],
         ];
 
         foreach ($teams as $teamData) {
+            $formattedName = str_replace(' ', '-', $teamData['name']); // Replace spaces with hyphens in the team name
+    
             Team::create([
                 'name' => $teamData['name'],
                 'nickname' => $teamData['nickname'],
                 'code' => $teamData['code'],
                 'conference' => $teamData['conference'],
-                'image_url' => 'https://static.www.nfl.com/t_q-best/league/api/clubs/logos/'.$teamData['code'].'.png',
-                'background_url' => $teamData['background_url'],
+                'image_url' => '/teams-logo\/' . $formattedName . '-logo.png',
+                'background_url' => '/backgrounds\/' . $formattedName . '-background.png',
             ]);
         }
     }
