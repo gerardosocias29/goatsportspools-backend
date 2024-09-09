@@ -87,6 +87,8 @@ class BetController extends Controller
     }    
     
     public function getOne(Request $request, $user_id) {
+        $currentTime = \Carbon\Carbon::now(); 
+
         $betsQuery = Bet::with([
             'wagerType', 
             'game',
@@ -96,10 +98,10 @@ class BetController extends Controller
             'odd.favored_team', 
             'odd.underdog_team', 
             'betGroup' => function ($query) {
-                $query->where('wager_result', '!=', 'pending');
+                // $query->where('wager_result', '!=', 'pending');
             }, 
             'betGroup.bets' => function ($query) {
-                $query->where('wager_result', '!=', 'pending');
+                // $query->where('wager_result', '!=', 'pending');
             }, 
             'betGroup.wagerType',
             'betGroup.bets.wagerType', 
@@ -110,7 +112,10 @@ class BetController extends Controller
             'betGroup.bets.odd.underdog_team'
         ])
         ->where('user_id', $user_id)
-        ->where('wager_result', '!=', 'pending');
+        // ->where('wager_result', '!=', 'pending')
+        ->whereHas('game', function ($query) use ($currentTime) {
+            $query->where('game_datetime', '<=', $currentTime); // Only include games starting after current time
+        });
         
         $bets = $betsQuery->get();
 

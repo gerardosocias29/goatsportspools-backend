@@ -57,7 +57,7 @@ class LeagueController extends Controller
         
         function formatPhone($phone) {
             $formattedPhone = substr($phone, 3, 3); // This gets the area code
-            return $formattedPhone;
+            return $formattedPhone.'-';
         }
     
         foreach ($leagues as $league) {
