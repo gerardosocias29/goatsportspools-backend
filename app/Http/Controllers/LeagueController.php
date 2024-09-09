@@ -48,6 +48,17 @@ class LeagueController extends Controller
                 });
             })
             ->get();
+
+        function formatEmail($email) {
+            $atPos = strpos($email, '@');
+            $formattedEmail = substr($email, 0, 3) . '...' . substr($email, -3);
+            return $formattedEmail;
+        }
+        
+        function formatPhone($phone) {
+            $formattedPhone = substr($phone, 3, 3); // This gets the area code
+            return $formattedPhone;
+        }
     
         foreach ($leagues as $league) {
             foreach ($league->participants as $participant) {
@@ -64,6 +75,10 @@ class LeagueController extends Controller
                 $participant->you = false;
                 $participant->betsrisk = $betsRisk;
                 $participant->betgrouprisk = $betGroupRisks;
+                
+                $participant->email = formatEmail($participant->email);
+                $participant->phone = formatPhone($participant->phone);
+
                 if($participant->id === $user->id){
                     $participant->you = true;
                 }
