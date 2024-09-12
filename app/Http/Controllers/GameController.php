@@ -12,20 +12,27 @@ class GameController extends Controller
     public function getGames(Request $request) {
         $user = Auth::user();
         $filter = json_decode($request->filter);
+        $now = \Carbon\Carbon::now()->toDateTimeString();
 
         // Get games with home or visitor score as 0 (current or future games)
         $current = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
-            ->where('home_team_score', '=', 0)
-            ->orWhere('visitor_team_score', '=', 0)
-            ->orderBy('game_datetime', 'ASC')
-            ->get();
+        ->where('game_datetime', '>', $now)
+        ->where(function($query) {
+            $query->where('home_team_score', '=', 0)
+                  ->orWhere('visitor_team_score', '=', 0);
+        })
+        ->orderBy('game_datetime', 'ASC')
+        ->get();
 
         // Get games with home or visitor score not equal to 0 (past games)
         $past = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
-            ->where('home_team_score', '!=', 0)
-            ->orWhere('visitor_team_score', '!=', 0)
-            ->orderBy('game_datetime', 'ASC')
-            ->get();
+        ->where('game_datetime', '<=', $now)
+        ->where(function($query) {
+            $query->where('home_team_score', '!=', 0)
+                  ->orWhere('visitor_team_score', '!=', 0);
+        })
+        ->orderBy('game_datetime', 'ASC')
+        ->get();
 
         // Concatenate the two collections
         $games = [
@@ -410,7 +417,7 @@ class GameController extends Controller
     
         // Get games that have already started (game_datetime is <= one minute ago), regardless of the score
         $games = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
-            ->where('game_datetime', '<=', $oneMinuteAgo)
+            ->where('game_datetime', '>', $oneMinuteAgo)
             ->orderBy('game_datetime', 'DESC')
             ->get();
     
