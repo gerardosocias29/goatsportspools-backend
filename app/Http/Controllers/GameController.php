@@ -27,10 +27,6 @@ class GameController extends Controller
         // Get games with home or visitor score not equal to 0 (past games)
         $past = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
         ->where('game_datetime', '<=', $now)
-        ->where(function($query) {
-            $query->where('home_team_score', '!=', 0)
-                  ->orWhere('visitor_team_score', '!=', 0);
-        })
         ->orderBy('game_datetime', 'ASC')
         ->get();
 
