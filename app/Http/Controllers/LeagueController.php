@@ -87,7 +87,7 @@ class LeagueController extends Controller
             $sortedParticipants = $league->participants->sortByDesc('balance');
         
             // Get the highest balance (1st place balance)
-            $highestBalance = $sortedParticipants->first()->balance;
+            $highestBalance = $sortedParticipants->first()->balance ?? 0;
         
             // Get participants tied with the highest balance
             $firstPlaceParticipants = $sortedParticipants->filter(function ($participant) use ($highestBalance) {
