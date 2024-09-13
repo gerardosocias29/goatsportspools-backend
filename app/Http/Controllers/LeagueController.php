@@ -65,32 +65,72 @@ class LeagueController extends Controller
                 $betsRisk = Bet::where('user_id', $participant->id)
                     ->where('wager_result', 'pending')
                     ->sum('wager_amount');
-
+        
                 $betGroupRisks = BetGroup::where('user_id', $participant->id)
                     ->where('wager_result', 'pending')
                     ->sum('wager_amount');
-
-
+        
                 $participant->balance = ($participant->pivot->balance + $betsRisk + $betGroupRisks);
                 $participant->you = false;
                 $participant->betsrisk = $betsRisk;
                 $participant->betgrouprisk = $betGroupRisks;
-                
+        
                 $participant->email = formatEmail($participant->email);
                 $participant->phone = formatPhone($participant->phone);
-
-                if($participant->id === $user->id){
+        
+                if ($participant->id === $user->id) {
                     $participant->you = true;
                 }
             }
-    
+        
+            // Sort participants by balance
             $sortedParticipants = $league->participants->sortByDesc('balance');
-            
-            $rank = 1;
-            $sortedParticipants->each(function ($participant) use (&$rank) {
-                $participant->rank = $rank++;
+        
+            // Get the highest balance (1st place balance)
+            $highestBalance = $sortedParticipants->first()->balance;
+        
+            // Get participants tied with the highest balance
+            $firstPlaceParticipants = $sortedParticipants->filter(function ($participant) use ($highestBalance) {
+                return $participant->balance == $highestBalance;
             });
-    
+        
+            $numFirstPlaceParticipants = $firstPlaceParticipants->count();
+        
+            // Apply labels based on the number of first-place participants
+            $prizePool = 200;
+            $label = '';
+            if ($numFirstPlaceParticipants == 1) {
+                $label = "$" . $prizePool . " October Winner";
+            // } elseif ($numFirstPlaceParticipants == 2) {
+            //     $label = "$" . ($prizePool / 2) . " October Winner";
+            // } elseif ($numFirstPlaceParticipants == 3) {
+            //     $label = "$30 October Winner";
+            // } elseif ($numFirstPlaceParticipants == 4) {
+            //     $label = "$25 October Winner";
+            } else {
+                $percentage = round($prizePool / $numFirstPlaceParticipants, 2);
+                $label = "$$percentage October Winner";
+            }
+        
+            // Assign the label to all participants tied for 1st place
+            $firstPlaceParticipants->each(function ($participant) use ($label) {
+                $participant->rank = $label;
+            });
+        
+            // Assign ranks and default rank labels for others
+            $rank = 1;
+            $sortedParticipants->each(function ($participant) use (&$rank, $firstPlaceParticipants, $label) {
+                if ($firstPlaceParticipants->contains($participant)) {
+                    // Skip rank increment for tied participants
+                    $participant->rank_number = 1;
+                    $participant->rank = $label;
+                    $rank++;
+                } else {
+                    $participant->rank_number = $rank++;
+                    $participant->rank = $participant->rank;
+                }
+            });
+        
             $league->participants = $sortedParticipants;
         }
     
