@@ -87,54 +87,53 @@ class LeagueController extends Controller
             $sortedParticipants = $league->participants->sortByDesc('balance');
         
             if(count($sortedParticipants) > 0) {
-
-            }
-            // Get the highest balance (1st place balance)
-            $highestBalance = $sortedParticipants->first()->balance;
-        
-            // Get participants tied with the highest balance
-            $firstPlaceParticipants = $sortedParticipants->filter(function ($participant) use ($highestBalance) {
-                return $participant->balance == $highestBalance;
-            });
-        
-            $numFirstPlaceParticipants = $firstPlaceParticipants->count();
-        
-            // Apply labels based on the number of first-place participants
-            $prizePool = 200;
-            $label = '';
-            if ($numFirstPlaceParticipants == 1) {
-                $label = "$" . $prizePool . " October Winner";
-            // } elseif ($numFirstPlaceParticipants == 2) {
-            //     $label = "$" . ($prizePool / 2) . " October Winner";
-            // } elseif ($numFirstPlaceParticipants == 3) {
-            //     $label = "$30 October Winner";
-            // } elseif ($numFirstPlaceParticipants == 4) {
-            //     $label = "$25 October Winner";
-            } else {
-                $percentage = round($prizePool / $numFirstPlaceParticipants, 2);
-                $label = "$$percentage October Winner";
-            }
-        
-            // Assign the label to all participants tied for 1st place
-            $firstPlaceParticipants->each(function ($participant) use ($label) {
-                $participant->rankLabel = $label;
-            });
-        
-            // Assign ranks and default rank labels for others
-            $rank = 1;
-            $sortedParticipants->each(function ($participant) use (&$rank, $firstPlaceParticipants, $label) {
-                if ($firstPlaceParticipants->contains($participant)) {
-                    // Skip rank increment for tied participants
-                    $participant->rank = 1;
-                    $participant->rankLabel = $label;
-                    $rank++;
+                // Get the highest balance (1st place balance)
+                $highestBalance = $sortedParticipants->first()->balance;
+            
+                // Get participants tied with the highest balance
+                $firstPlaceParticipants = $sortedParticipants->filter(function ($participant) use ($highestBalance) {
+                    return $participant->balance == $highestBalance;
+                });
+            
+                $numFirstPlaceParticipants = $firstPlaceParticipants->count();
+            
+                // Apply labels based on the number of first-place participants
+                $prizePool = 200;
+                $label = '';
+                if ($numFirstPlaceParticipants == 1) {
+                    $label = "$" . $prizePool . " October Winner";
+                // } elseif ($numFirstPlaceParticipants == 2) {
+                //     $label = "$" . ($prizePool / 2) . " October Winner";
+                // } elseif ($numFirstPlaceParticipants == 3) {
+                //     $label = "$30 October Winner";
+                // } elseif ($numFirstPlaceParticipants == 4) {
+                //     $label = "$25 October Winner";
                 } else {
-                    $participant->rank = $rank++;
-                    $participant->rankLabel = $participant->rank;
+                    $percentage = round($prizePool / $numFirstPlaceParticipants, 2);
+                    $label = "$$percentage October Winner";
                 }
-            });
-        
-            $league->participants = $sortedParticipants;
+            
+                // Assign the label to all participants tied for 1st place
+                $firstPlaceParticipants->each(function ($participant) use ($label) {
+                    $participant->rankLabel = $label;
+                });
+            
+                // Assign ranks and default rank labels for others
+                $rank = 1;
+                $sortedParticipants->each(function ($participant) use (&$rank, $firstPlaceParticipants, $label) {
+                    if ($firstPlaceParticipants->contains($participant)) {
+                        // Skip rank increment for tied participants
+                        $participant->rank = 1;
+                        $participant->rankLabel = $label;
+                        $rank++;
+                    } else {
+                        $participant->rank = $rank++;
+                        $participant->rankLabel = $participant->rank;
+                    }
+                });
+            
+                $league->participants = $sortedParticipants;
+            }
         }
     
         return response(["status" => true, "leagues" => $leagues]);
