@@ -70,7 +70,7 @@ class LeagueController extends Controller
                     ->where('wager_result', 'pending')
                     ->sum('wager_amount');
         
-                $participant->balance = ($participant->pivot->balance + $betsRisk + $betGroupRisks);
+                $participant->balance = ($participant->pivot->balance + $betsRisk + $betGroupRisks) ?? 0;
                 $participant->you = false;
                 $participant->betsrisk = $betsRisk;
                 $participant->betgrouprisk = $betGroupRisks;
