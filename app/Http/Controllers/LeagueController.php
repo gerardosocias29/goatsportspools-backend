@@ -86,15 +86,18 @@ class LeagueController extends Controller
             // Sort participants by balance
             $sortedParticipants = $league->participants->sortByDesc('balance');
         
+            if(count($sortedParticipants) > 0) {
+
+            }
             // Get the highest balance (1st place balance)
-            $highestBalance = $sortedParticipants->first()->balance ?? 0;
+            $highestBalance = $sortedParticipants->first()->balance;
         
             // Get participants tied with the highest balance
             $firstPlaceParticipants = $sortedParticipants->filter(function ($participant) use ($highestBalance) {
                 return $participant->balance == $highestBalance;
             });
         
-            $numFirstPlaceParticipants = ($firstPlaceParticipants->count() > 0 ? $firstPlaceParticipants->count() : 1);
+            $numFirstPlaceParticipants = $firstPlaceParticipants->count();
         
             // Apply labels based on the number of first-place participants
             $prizePool = 200;
@@ -114,7 +117,7 @@ class LeagueController extends Controller
         
             // Assign the label to all participants tied for 1st place
             $firstPlaceParticipants->each(function ($participant) use ($label) {
-                $participant->rank = $label;
+                $participant->rankLabel = $label;
             });
         
             // Assign ranks and default rank labels for others
@@ -122,12 +125,12 @@ class LeagueController extends Controller
             $sortedParticipants->each(function ($participant) use (&$rank, $firstPlaceParticipants, $label) {
                 if ($firstPlaceParticipants->contains($participant)) {
                     // Skip rank increment for tied participants
-                    $participant->rank_number = 1;
-                    $participant->rank = $label;
+                    $participant->rank = 1;
+                    $participant->rankLabel = $label;
                     $rank++;
                 } else {
-                    $participant->rank_number = $rank++;
-                    $participant->rank = $participant->rank_number;
+                    $participant->rank = $rank++;
+                    $participant->rankLabel = $participant->rank;
                 }
             });
         
