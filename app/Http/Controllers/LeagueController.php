@@ -127,7 +127,7 @@ class LeagueController extends Controller
                     $rank++;
                 } else {
                     $participant->rank_number = $rank++;
-                    $participant->rank = $participant->rank;
+                    $participant->rank = $participant->rank_number;
                 }
             });
         
