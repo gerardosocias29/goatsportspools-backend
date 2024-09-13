@@ -94,7 +94,7 @@ class LeagueController extends Controller
                 return $participant->balance == $highestBalance;
             });
         
-            $numFirstPlaceParticipants = $firstPlaceParticipants->count();
+            $numFirstPlaceParticipants = ($firstPlaceParticipants->count() > 0 ? $firstPlaceParticipants->count() : 1);
         
             // Apply labels based on the number of first-place participants
             $prizePool = 200;
