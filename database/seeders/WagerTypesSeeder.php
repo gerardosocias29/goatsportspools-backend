@@ -17,8 +17,8 @@ class WagerTypesSeeder extends Seeder
 
         $wagerTypes = [
             ["name" => "Spread", "description" => "Spread Wagers", "no_of_teams" => 1],
-            ["name" => "TotalPoints", "description" => "Total Points Wagers", "no_of_teams" => 1],
-            ["name" => "MoneyLine", "description" => "Money Line Wagers", "no_of_teams" => 1],
+            ["name" => "Total Points", "description" => "Total Points Wagers", "no_of_teams" => 1],
+            ["name" => "Money Line", "description" => "Money Line Wagers", "no_of_teams" => 1],
             ["name" => "2TP", "description" => "Two Team Parlay", "no_of_teams" => 2],
             ["name" => "2TT", "description" => "Two Team Teaser", "no_of_teams" => 2],
             ["name" => "3TP", "description" => "Three Team Parlay", "no_of_teams" => 3],
