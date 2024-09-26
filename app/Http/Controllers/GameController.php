@@ -218,7 +218,7 @@ class GameController extends Controller
             }
         }
     
-        return response()->json(['message' => 'Winner announced and bets updated successfully.']);
+        return response()->json(["status" => true, 'message' => 'Winner announced and bets updated successfully.']);
     }
 
     public function checkParlayWinning($bet_group_id, $bet_user_id) {
