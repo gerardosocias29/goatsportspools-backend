@@ -71,6 +71,7 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'games'], function () {
         Route::get('/', [GameController::class, 'games']);
+        Route::get('/weekly', [GameController::class, 'weeklyGames']);
         Route::post('/announce-winner', [GameController::class, 'announceWinner']);
         Route::post('/create', [GameController::class, 'create']);
         Route::post('/update/{id}', [GameController::class, 'update']);

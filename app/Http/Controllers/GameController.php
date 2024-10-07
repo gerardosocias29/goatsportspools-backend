@@ -39,6 +39,33 @@ class GameController extends Controller
         return response()->json($games);
     }
 
+    public function weeklyGames() {
+        $seasonStartDate = \Carbon\Carbon::create(2024, 9, 5); // Set the NFL season start date
+
+        $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
+
+        $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
+            ->where('game_datetime', '>=', $seasonStartDate)
+            ->where('visitor_team_score', '<', 1)
+            ->where('home_team_score', '<', 1)
+            ->whereHas('odd', function ($query) {
+                $query->where('over_total', '>=', 4)
+                    ->where('under_total', '>=', 4);
+            })
+            ->orderBy('game_datetime', 'ASC');
+
+        $games = $gamesQuery->get();
+
+        // Group by week
+        $groupedGames = $games->groupBy(function ($game) use ($seasonStartDate) {
+            $gameDate = \Carbon\Carbon::parse($game->game_datetime);
+            return 'Week ' . $seasonStartDate->diffInWeeks($gameDate) + 1;
+        });
+
+        // Return grouped games in JSON format
+        return response()->json($groupedGames);
+    }
+
     public function games(Request $request) {
         $user = Auth::user();
     
@@ -54,6 +81,10 @@ class GameController extends Controller
                 ->where('game_datetime', '>', $oneMinuteAgo)
                 ->where('visitor_team_score', '<', 1)
                 ->where('home_team_score', '<', 1)
+                ->whereHas('odd', function ($query) {
+                    $query->where('over_total', '>=', 4)
+                          ->where('under_total', '>=', 4);
+                })
                 ->orderBy('game_datetime', 'ASC');
     
             $gamesQuery = $this->applyFilters($gamesQuery, $filter);
@@ -69,6 +100,10 @@ class GameController extends Controller
                 ->where('game_datetime', '>', $oneMinuteAgo)
                 ->where('visitor_team_score', '<', 1)
                 ->where('home_team_score', '<', 1)
+                ->whereHas('odd', function ($query) {
+                    $query->where('over_total', '>=', 4)
+                          ->where('under_total', '>=', 4);
+                })
                 ->orderBy('game_datetime', 'ASC');
 
             $games = $gamesQuery->get();
