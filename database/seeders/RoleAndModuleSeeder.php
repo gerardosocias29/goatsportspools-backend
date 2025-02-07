@@ -21,18 +21,22 @@ class RoleAndModuleSeeder extends Seeder
         $modules = [
             // ['name' => 'Dashboard', 'page' => 'dashboard', 'icon' => 'icon-dashboard'],
             // ['name' => 'Games', 'page' => '', 'icon' => 'icon-running'],
-            ['name' => 'Games', 'page' => 'games/nfl', 'icon' => 'icon-games'],
-            ['name' => 'Open Bets', 'page' => 'open-bets', 'icon' => 'icon-bet-history'],
-            ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history'],
-            ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'],
-            ['name' => 'Standings', 'page' => 'league-standings', 'icon' => 'icon-league-standings'],
-            ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues'],
+            ['name' => 'NCAA Basketball Auction', 'page' => 'ncaa-basketball-auction', 'icon' => 'icon-ncaa'], // 1
+            ['name' => 'NFL', 'page' => '', 'icon' => 'icon-nfl'], // 2
 
-            ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'],
-            ['name' => 'How It Works', 'page' => 'how-it-works', 'icon' => 'icon-hiw'],
+            ['name' => 'Games', 'page' => 'games/nfl', 'icon' => 'icon-games', 'parent_id' => 2], // 3
+            ['name' => 'Open Bets', 'page' => 'open-bets', 'icon' => 'icon-bet-history', 'parent_id' => 2], // 4
+            ['name' => 'Bet History', 'page' => 'bet-history', 'icon' => 'icon-bet-history', 'parent_id' => 2], // 5
+            ['name' => 'Standings', 'page' => 'league-standings', 'icon' => 'icon-league-standings', 'parent_id' => 2], // 6
+            ['name' => 'Leagues', 'page' => 'leagues', 'icon' => 'icon-leagues', 'parent_id' => 2], // 7
 
-            ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 7],
-            ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 7],
+            ['name' => 'Users', 'page' => 'users', 'icon' => 'icon-users'], // 8
+            ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'], // 9
+            ['name' => 'How It Works', 'page' => 'how-it-works', 'icon' => 'icon-hiw'], // 10
+
+            ['name' => 'Manage Bidding', 'page' => 'settings/manage-bidding', 'icon' => 'icon-bidding-management', 'parent_id' => 9],
+            ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 9],
+            ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 9],
         ];
 
         // Create the modules and store the IDs
@@ -54,12 +58,12 @@ class RoleAndModuleSeeder extends Seeder
             [
                 'name' => 'League Admin',
                 'description' => 'Manages league settings and user permissions.',
-                'allowed_modules' => [1,2,3,5,6,7,8] // Assign specific module IDs
+                'allowed_modules' => [1,2,3,5,6,7,8,9,10] // Assign specific module IDs
             ],
             [
                 'name' => 'Normal User',
                 'description' => 'Has access to participate in NFL pool and view scores.',
-                'allowed_modules' => [1,2,3,5,8]  // Assign specific module IDs
+                'allowed_modules' => [1,2,3,5,6,7,10]  // Assign specific module IDs
             ]
         ];
 

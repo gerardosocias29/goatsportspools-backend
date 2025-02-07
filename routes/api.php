@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{AuthController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
 use Illuminate\Support\Facades\Artisan;
-
+use App\Events\NewBid;
 
 Route::post('/contact-us/send', [ContactUsController::class, 'send']);
 
@@ -96,4 +96,9 @@ Route::group(['middleware' => 'auth:api'], function () {
 Route::group(['middleware' => 'verify.jwt.jwks'], function () {
     Route::get('/user-details', [UserController::class, 'getUserDetails']);
     Route::post('/getToken', [UserController::class, 'getToken']);
+});
+
+Route::post('/bid', function (Request $request) {
+    event(new NewBid($request->username, $request->amount));
+    return response()->json(['status' => 'Bid placed!']);
 });
