@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
+use App\Http\Controllers\{AuthController, AuctionController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 
@@ -91,6 +91,13 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/all', [TeamController::class, 'teams']);
     });
 
+
+    Route::group(['prefix' => 'auctions'], function () {
+        Route::get('/', [AuctionController::class, 'getAuctions']);
+        Route::post('/create', [AuctionController::class, 'create']);
+        Route::post('/{auction_id}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
+
+    });
 });
 
 Route::group(['middleware' => 'verify.jwt.jwks'], function () {
