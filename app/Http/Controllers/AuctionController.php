@@ -8,9 +8,16 @@ use App\Models\{Auction, AuctionItem};
 use App\Events\AuctionStarted;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use App\CustomLibraries\PushNotification;
 
 class AuctionController extends Controller
 {
+    public function all(){
+        $auctions = Auction::with(['items.bids.user'])->get();
+        return response()->json($auctions);
+
+    }
+
     public function getAuctions(Request $request) {
         $user = Auth::user();
         $filter = json_decode($request->filter);
@@ -22,7 +29,20 @@ class AuctionController extends Controller
         return response()->json($auctions);
     }
 
+    public function getAuctionsById(Request $request, $auctionId) {
+        $user = Auth::user();
+        $auction = Auction::with(['items.bids.user', 'items.bids' => function ($query) {
+            $query->orderBy('created_at', 'desc'); // Change to 'desc' for newest first
+        }])->where('id', $auctionId)->first();
+        return response()->json($auction);
+    }
+
     public function create(Request $request) {
+        $user = Auth::user();
+        if($user->role_id == 3) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to create game."]);
+        }
+
         $request->validate([
             'name' => 'required|string|unique:auctions,name',
             'stream_url' => 'nullable|url',
@@ -71,12 +91,64 @@ class AuctionController extends Controller
         $request->validate([
             'stream_url' => 'required|url',
         ]);
-        $auction = Auction::findOrFail($auction_id);
-        $auction->update(['stream_url' => $request->stream_url]);
 
-        broadcast(new AuctionStarted($auction));
+        $user = Auth::user();
+        if($user->role_id == 3) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
+        }
+
+        $auction = Auction::findOrFail($auction_id);
+        $auction->update([
+            'stream_url' => $request->stream_url,
+            "status" => "live"
+        ]);
+
+        PushNotification::notifyActiveAuction(["status" => true, "message" => "Get fresh auctions data"]);
+        PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
+
+        // broadcast(new AuctionStarted($auction));
 
         return response()->json(['status' => true, 'message' => 'Stream URL updated successfully', 'auction' => $auction], 200);
+    }
+    
+    public function setActiveItem(Request $request, $auction_id, $item_id) {
+        $user = Auth::user();
+        if($user->role_id == 3) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
+        }
+
+        $auctionItem = AuctionItem::with(['bids.user', 'bids' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            }])
+            ->where('id', $item_id)
+            ->where('auction_id', $auction_id)
+            ->first();
+
+        PushNotification::notifyActiveItem(["status" => true, "data" => $auctionItem, "message" => "Get active item"]);
+        
+        return response()->json(['status' => true, 'message' => 'All users notified.'], 200);
+    }
+
+    public function getUpcomingAuctions()
+    {
+        $auctions = Auction::where('status', 'upcoming')->with('items')->get();
+        return response()->json($auctions);
+    }
+
+    public function getLiveAuction()
+    {
+        $liveAuction = Auction::where('status', 'live')->with('items.bids')->first();
+        return response()->json($liveAuction);
+    }
+
+    public function getUserAuctionedItems()
+    {
+        $user = Auth::user();
+        $items = AuctionItem::whereHas('bids', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->get();
+
+        return response()->json($items);
     }
 
     private function applyFilters($query, $filter) {

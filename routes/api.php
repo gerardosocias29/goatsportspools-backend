@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{AuthController, AuctionController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
+use App\CustomLibraries\PushNotification;
+use App\Models\{AuctionItem};
 
 Route::post('/contact-us/send', [ContactUsController::class, 'send']);
 
@@ -94,9 +96,17 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'auctions'], function () {
         Route::get('/', [AuctionController::class, 'getAuctions']);
+        Route::get('/all', [AuctionController::class, 'all']);
+        Route::get('/{auctionId}', [AuctionController::class, 'getAuctionsById']);
         Route::post('/create', [AuctionController::class, 'create']);
         Route::post('/{auction_id}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
 
+        Route::get('/{auction_id}/{item_id}/set-active-item', [AuctionController::class, 'setActiveItem']);
+        
+        Route::get('/upcoming', [AuctionController::class, 'getUpcomingAuctions']);
+        Route::get('/live', [AuctionController::class, 'getLiveAuction']);
+        Route::get('/my-items', [AuctionController::class, 'getUserAuctionedItems']);
+        Route::post('/{auction_id}/{item_id}/bid', [AuctionItemBidController::class, 'placeBid']);
     });
 });
 
