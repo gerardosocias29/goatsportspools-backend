@@ -15,7 +15,6 @@ class AuctionController extends Controller
     public function all(){
         $auctions = Auction::with(['items.bids.user'])->get();
         return response()->json($auctions);
-
     }
 
     public function getAuctions(Request $request) {
@@ -103,7 +102,9 @@ class AuctionController extends Controller
             "status" => "live"
         ]);
 
-        PushNotification::notifyActiveAuction(["status" => true, "message" => "Get fresh auctions data"]);
+        $auction->load('items.bids');
+
+        PushNotification::notifyActiveAuction($auction);
         PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
 
         // broadcast(new AuctionStarted($auction));
@@ -129,15 +130,15 @@ class AuctionController extends Controller
         return response()->json(['status' => true, 'message' => 'All users notified.'], 200);
     }
 
-    public function getUpcomingAuctions()
+    public function getUpcomingAuctions(Request $request)
     {
-        $auctions = Auction::where('status', 'upcoming')->with('items')->get();
+        $auctions = Auction::where('status', 'pending')->with(['items.bids'])->get();
         return response()->json($auctions);
     }
 
-    public function getLiveAuction()
+    public function getLiveAuction(Request $request)
     {
-        $liveAuction = Auction::where('status', 'live')->with('items.bids')->first();
+        $liveAuction = Auction::where('status', 'live')->with(["items.bids"])->first();
         return response()->json($liveAuction);
     }
 

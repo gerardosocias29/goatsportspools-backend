@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -97,7 +97,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::group(['prefix' => 'auctions'], function () {
         Route::get('/', [AuctionController::class, 'getAuctions']);
         Route::get('/all', [AuctionController::class, 'all']);
-        Route::get('/{auctionId}', [AuctionController::class, 'getAuctionsById']);
+        Route::get('/{auctionId}/get-by-id', [AuctionController::class, 'getAuctionsById']);
         Route::post('/create', [AuctionController::class, 'create']);
         Route::post('/{auction_id}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
 
