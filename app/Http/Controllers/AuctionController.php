@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\{Auction, AuctionItem};
+use App\Models\{Auction, AuctionBidDetail, AuctionItem, NcaaTeam};
 use App\Events\AuctionStarted;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,9 +30,12 @@ class AuctionController extends Controller
 
     public function getAuctionsById(Request $request, $auctionId) {
         $user = Auth::user();
-        $auction = Auction::with(['items.bids.user', 'items.bids' => function ($query) {
-            $query->orderBy('created_at', 'desc'); // Change to 'desc' for newest first
+        $auction = Auction::with(['items', 'items.bids' => function ($query) {
+            $query->orderBy('bid_amount', 'desc'); // Change to 'desc' for highest first
         }])->where('id', $auctionId)->first();
+
+        $auction->teams = NcaaTeam::all();
+
         return response()->json($auction);
     }
 
@@ -46,12 +49,6 @@ class AuctionController extends Controller
             'name' => 'required|string|unique:auctions,name',
             'stream_url' => 'nullable|url',
             'event_date' => 'nullable|date',
-            'items' => 'required|array',
-            'items.*.name' => 'required|string|unique:auction_items,name',
-            'items.*.description' => 'nullable|string',
-            'items.*.starting_bid' => 'required|numeric|min:0',
-            'items.*.minimum_bid' => 'required|numeric|min:0',
-            'items.*.target_bid' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -66,14 +63,16 @@ class AuctionController extends Controller
             ]);
 
             // Add Auction Items
-            foreach ($request->items as $item) {
+            $teams = NcaaTeam::all();
+            foreach ($teams as $team) {
                 AuctionItem::create([
                     'auction_id' => $auction->id,
-                    'name' => $item['name'],
-                    'description' => $item['description'] ?? null,
-                    'starting_bid' => $item['starting_bid'],
-                    'minimum_bid' => $item['minimum_bid'],
-                    'target_bid' => $item['target_bid'] ?? null,
+                    'ncaa_team_id' => $team->id,
+                    'name' => $team['nickname'] . " - ".$team['school'],
+                    'description' => $team['school'] ?? null,
+                    'starting_bid' => 1,
+                    'minimum_bid' => 1,
+                    'target_bid' => null,
                 ]);
             }
 
@@ -101,8 +100,6 @@ class AuctionController extends Controller
             'stream_url' => $request->stream_url,
             "status" => "live"
         ]);
-
-        $auction->load('items.bids');
 
         PushNotification::notifyActiveAuction($auction);
         PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
@@ -165,4 +162,21 @@ class AuctionController extends Controller
         return $query;
     }
     
+    public function getAuctionDetails(Request $request, $auction_id, $ncaa_team_id) {
+        $auctionBidDetail = AuctionBidDetail::where('auction_id', $auction_id)
+            ->where('ncaa_team_id', $ncaa_team_id)
+            ->orderBy('created_at', 'DESC')
+            ->first();
+        
+        if(!$auctionBidDetail){
+            $auctionBidDetail = new AuctionBidDetail();
+            $auctionBidDetail->auction_id = $auction_id;
+            $auctionBidDetail->ncaa_team_id = $ncaa_team_id;
+            $auctionBidDetail->starting_bid = 1;
+            $auctionBidDetail->minimum_bid = 1;
+            $auctionBidDetail->save();
+        }
+
+        return response()->json($auctionBidDetail);
+    }
 }

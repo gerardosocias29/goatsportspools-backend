@@ -103,6 +103,8 @@ Route::group(['middleware' => 'auth:api'], function () {
 
         Route::get('/{auction_id}/{item_id}/set-active-item', [AuctionController::class, 'setActiveItem']);
         
+        // Route::get('/{auction_id}/{ncaa_team_id}/get-auction-details', [AuctionController::class, 'getAuctionDetails']);
+        
         Route::get('/upcoming', [AuctionController::class, 'getUpcomingAuctions']);
         Route::get('/live', [AuctionController::class, 'getLiveAuction']);
         Route::get('/my-items', [AuctionController::class, 'getUserAuctionedItems']);

@@ -34,7 +34,7 @@ class RoleAndModuleSeeder extends Seeder
             ['name' => 'Settings', 'page' => '', 'icon' => 'icon-settings'], // 9
             ['name' => 'How It Works', 'page' => 'how-it-works', 'icon' => 'icon-hiw'], // 10
 
-            ['name' => 'Manage Bidding', 'page' => 'settings/manage-bidding', 'icon' => 'icon-bidding-management', 'parent_id' => 9],
+            ['name' => 'Manage Auctions', 'page' => 'settings/manage-auction', 'icon' => 'icon-auction-management', 'parent_id' => 9],
             ['name' => 'Manage Games', 'page' => 'settings/game-management', 'icon' => 'icon-game-management', 'parent_id' => 9],
             ['name' => 'Manage Teams', 'page' => 'settings/teams', 'icon' => 'icon-teams', 'parent_id' => 9],
         ];
