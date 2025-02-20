@@ -20,4 +20,8 @@ class Auction extends Model
     public function auctionBids() {
         return $this->hasMany(AuctionBid::class);
     }
+
+    public function joinedUsers() {
+        return $this->hasMany(AuctionUser::class);
+    }
 }

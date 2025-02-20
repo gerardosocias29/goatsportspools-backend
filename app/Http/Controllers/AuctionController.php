@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\{Auction, AuctionBidDetail, AuctionItem, NcaaTeam};
+use App\Models\{Auction, AuctionUser, AuctionBidDetail, AuctionItem, NcaaTeam};
 use App\Events\AuctionStarted;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,9 +30,14 @@ class AuctionController extends Controller
 
     public function getAuctionsById(Request $request, $auctionId) {
         $user = Auth::user();
-        $auction = Auction::with(['items', 'items.bids' => function ($query) {
-            $query->orderBy('bid_amount', 'desc'); // Change to 'desc' for highest first
-        }])->where('id', $auctionId)->first();
+        $auction = Auction::with(['items', 'joinedUsers.user', 
+            'joinedUsers' => function ($query) {
+                $query->where('status', 'joined');
+            }, 
+            'items.bids' => function ($query) {
+                $query->orderBy('bid_amount', 'desc'); // Change to 'desc' for highest first
+            }
+        ])->where('id', $auctionId)->first();
 
         $auction->teams = NcaaTeam::all();
 
@@ -178,5 +183,48 @@ class AuctionController extends Controller
         }
 
         return response()->json($auctionBidDetail);
+    }
+
+    public function auctionJoin($auctionId) {
+        $user = Auth::user();
+
+        $auctionUser = AuctionUser::where('auction_id', $auctionId)
+        ->where('user_id', $user->id)
+        ->first();
+
+        if ($auctionUser) {
+            // Update existing record
+            $auctionUser->status = "joined";
+            $auctionUser->save();
+        } else {
+            // Create a new record
+            $auctionUser = new AuctionUser();
+            $auctionUser->auction_id = $auctionId;
+            $auctionUser->user_id = $user->id;
+            $auctionUser->status = "joined";
+            $auctionUser->save();
+        }
+
+        PushNotification::notifyAuctionJoined(["status" => true, "message" => "Get joined members on auction."]);
+        return response()->json(["status" => true, "message" => "Joined!"]);
+    }
+
+    public function auctionAway($auctionId, $userId) {
+        $auctionUser = AuctionUser::where('user_id', $userId)->first();
+        if(!empty($auctionUser)) {
+            $auctionUser->status = "away";
+            $auctionUser->update();
+
+            PushNotification::notifyAuctionJoined(["status" => true, "message" => "Get joined members on auction."]);
+        }
+        return response()->json(["status" => true, "message" => "Away!"]);
+    }
+
+    public function auctionMembers($auctionId) {
+        $auctionUsers = AuctionUser::with(['user'])->where('auction_id', $auctionId)
+            ->where("status", "joined")
+            ->get();
+
+        return response()->json($auctionUsers);
     }
 }

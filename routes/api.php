@@ -34,6 +34,8 @@ Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('refresh', [AuthController::class, 'refresh']);
 
+Route::post('/auctions/{auctionId}/{userId}/leave', [AuctionController::class, 'auctionAway']);
+
 // Protected route example
 Route::group(['middleware' => 'auth:api'], function () {
     // Your authenticated API routes here
@@ -98,6 +100,9 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/', [AuctionController::class, 'getAuctions']);
         Route::get('/all', [AuctionController::class, 'all']);
         Route::get('/{auctionId}/get-by-id', [AuctionController::class, 'getAuctionsById']);
+        Route::get('/{auctionId}/join', [AuctionController::class, 'auctionJoin']);
+        Route::get('/{auctionId}/members', [AuctionController::class, 'auctionMembers']);
+        
         Route::post('/create', [AuctionController::class, 'create']);
         Route::post('/{auction_id}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
 

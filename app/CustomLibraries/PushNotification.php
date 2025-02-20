@@ -43,6 +43,11 @@ class PushNotification
     self::trigger("bidding-channel", "active-item-event", $data);
   }
 
+  public static function notifyAuctionJoined($data): void
+  {
+    self::trigger("bidding-channel", "auction-members", $data);
+  }
+
   public static function notifyBid($data): void
   {
     self::trigger("bidding-channel", "bid-event", $data);
