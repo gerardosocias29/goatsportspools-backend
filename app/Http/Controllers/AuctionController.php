@@ -227,4 +227,12 @@ class AuctionController extends Controller
 
         return response()->json($auctionUsers);
     }
+
+    public function endAuction($auction_id) {
+        $auction = Auction::where('id', $auction_id)->first();
+        $auction->status = "pending";
+        $auction->save();
+
+        return response()->json(["status" => true, "message" => "Auction Ended"]);
+    }
 }
