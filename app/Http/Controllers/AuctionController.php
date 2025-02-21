@@ -30,7 +30,7 @@ class AuctionController extends Controller
 
     public function getAuctionsById(Request $request, $auctionId) {
         $user = Auth::user();
-        $auction = Auction::with(['items', 'joinedUsers.user', 
+        $auction = Auction::with(['items', 'joinedUsers.user', 'items.ncaa_team', 'items.bids.user',
             'joinedUsers' => function ($query) {
                 $query->where('status', 'joined');
             }, 
@@ -127,9 +127,21 @@ class AuctionController extends Controller
             ->where('auction_id', $auction_id)
             ->first();
 
-        PushNotification::notifyActiveItem(["status" => true, "data" => $auctionItem, "message" => "Get active item"]);
+        PushNotification::notifyActiveItem(["status" => true, "data" => $auctionItem->id, "message" => "Get active item"]);
         
         return response()->json(['status' => true, 'message' => 'All users notified.'], 200);
+    }
+
+    public function getActiveItem($auction_id, $item_id) {
+        $user = Auth::user();
+        $auctionItem = AuctionItem::with(['bids.user', 'bids' => function ($query) {
+            $query->orderBy('bid_amount', 'desc');
+        }])
+        ->where('id', $item_id)
+        ->where('auction_id', $auction_id)
+        ->first();
+
+        return response()->json($auctionItem);
     }
 
     public function getUpcomingAuctions(Request $request)

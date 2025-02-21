@@ -10,7 +10,7 @@ class AuctionItem extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['auction_id', 'name', 'description', 'sold_to', 'starting_bid', 'minimum_bid', 'target_bid', 'status'];
+    protected $fillable = ['auction_id', 'ncaa_team_id', 'name', 'description', 'sold_to', 'starting_bid', 'minimum_bid', 'target_bid', 'sold_amount', 'status'];
 
     public function auction()
     {
@@ -20,5 +20,9 @@ class AuctionItem extends Model
     public function bids()
     {
         return $this->hasMany(AuctionItemBid::class);
+    }
+
+    public function ncaa_team() {
+        return $this->belongsTo(NcaaTeam::class);
     }
 }
