@@ -114,6 +114,8 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/upcoming', [AuctionController::class, 'getUpcomingAuctions']);
         Route::get('/live', [AuctionController::class, 'getLiveAuction']);
         Route::get('/my-items', [AuctionController::class, 'getUserAuctionedItems']);
+
+        Route::post('/remove-bid', [AuctionItemBidController::class, 'removeBid']);
         Route::post('/{auction_id}/{item_id}/bid', [AuctionItemBidController::class, 'placeBid']);
     });
 });
