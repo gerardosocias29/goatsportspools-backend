@@ -162,7 +162,7 @@ class UserController extends Controller
         return response($users);
     }
 
-    public function getUsers(Request $request) {
+    public function All(Request $request) {
         $filter = json_decode($request->filter);
         $usersQuery = User::with(['role' => function($query) {
             $query->select('id', 'name');
@@ -224,5 +224,10 @@ class UserController extends Controller
         $user = User::where('id', $user_id)->first();
         $user->balance = $user->balance + $amount;
         $user->update();
+    }
+
+    public function getAllUsers(Request $request) {
+        $users = User::get();
+        return response()->json($users);
     }
 }

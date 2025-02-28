@@ -51,6 +51,7 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     Route::group(['prefix' => 'users'], function () {
         Route::get('/', [UserController::class, 'getUsers']);
+        Route::get('/all', [UserController::class, 'getAllUsers']);
         Route::get('/league-admins', [UserController::class, 'getLeagueAdmins']);
         Route::get('/card-data', [UserController::class, 'getCardData']);
         Route::post('/update-role/{user_id}', [UserController::class, 'updateRole']);

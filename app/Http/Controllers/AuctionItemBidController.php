@@ -14,6 +14,10 @@ class AuctionItemBidController extends Controller
         $request->validate(['bid_amount' => 'required|numeric|min:0']);
 
         $user = Auth::user();
+        $userId = $user->id;
+        if($request->has('user_id')){
+            $userId = $request->user_id;
+        }
 
         $auctionItem = AuctionItem::where('id', $item_id)->where('auction_id', $auction_id)->firstOrFail();
 
@@ -40,7 +44,7 @@ class AuctionItemBidController extends Controller
 
             $bid = AuctionItemBid::create([
                 'auction_item_id' => $auctionItem->id,
-                'user_id' => $user->id,
+                'user_id' => $userId,
                 'bid_amount' => $request->bid_amount,
             ]);
     
