@@ -30,11 +30,15 @@ class AuctionController extends Controller
 
     public function getAuctionsById(Request $request, $auctionId) {
         $user = Auth::user();
-        $auction = Auction::with(['items', 'joinedUsers.user', 'items.ncaa_team', 'items.bids.user',
+        $auction = Auction::with(['joinedUsers.user', 'items.ncaa_team', 'items.bids.user', 
+            'items' => function ($query) {
+                $query->whereNull('sold_to');
+            }, 
             'joinedUsers' => function ($query) {
                 $query->where('status', 'joined');
             }, 
             'items.bids' => function ($query) {
+                
                 $query->orderBy('bid_amount', 'desc'); // Change to 'desc' for highest first
             }
         ])->where('id', $auctionId)->first();
@@ -142,6 +146,21 @@ class AuctionController extends Controller
         ->first();
 
         return response()->json($auctionItem);
+    }
+
+    public function end(Request $request, $auction_id, $item_id) {
+        $user = Auth::user();
+        $auctionItem = AuctionItem::where('auction_id', $auction_id)->where('id', $item_id)->first();
+        
+        if($request->sold_to != 0 && $request->sold_amount != 0){
+            $auctionItem->sold_to = $request->sold_to;
+            $auctionItem->sold_amount = $request->sold_amount;
+            $auctionItem->save();
+
+            PushNotification::notifyActiveItem(["status" => true, "data" => 0, "message" => "End active item"]);
+        }
+        
+        return response()->json(['status' => true, 'message' => 'Auction item ended.']);
     }
 
     public function getUpcomingAuctions(Request $request)
