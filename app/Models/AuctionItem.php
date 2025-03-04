@@ -25,4 +25,8 @@ class AuctionItem extends Model
     public function ncaa_team() {
         return $this->belongsTo(NcaaTeam::class);
     }
+
+    public function owner() {
+        return $this->belongsTo(User::class, 'sold_to', 'id');
+    }
 }

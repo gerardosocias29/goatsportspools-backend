@@ -21,7 +21,11 @@ class AuctionController extends Controller
         $user = Auth::user();
         $filter = json_decode($request->filter);
 
-        $auctionsQuery = Auction::with(['items']);
+        $auctionsQuery = Auction::with(['items.bids.user', 'items.owner', 'items.ncaa_team',
+            'items.bids' => function ($query) {
+                $query->orderBy('bid_amount', 'desc'); // Change to 'desc' for highest first
+            }
+        ]);
         $auctionsQuery = $this->applyFilters($auctionsQuery->orderBy('created_at', 'DESC'), $filter);
 
         $auctions = $auctionsQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
