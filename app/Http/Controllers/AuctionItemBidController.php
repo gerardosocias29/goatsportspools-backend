@@ -47,6 +47,20 @@ class AuctionItemBidController extends Controller
                 'user_id' => $userId,
                 'bid_amount' => $request->bid_amount,
             ]);
+
+            if($request->bid_amount > 100 && $request->bid_amount < 601){
+                $auctionItem->minimum_bid = 5;
+            } else if($request->bid_amount > 600 && $request->bid_amount < 3001) {
+                $auctionItem->minimum_bid = 10;
+            } else if($request->bid_amount > 3000 && $request->bid_amount < 9001) {
+                $auctionItem->minimum_bid = 30;
+            } else if($request->bid_amount > 9001 && $request->bid_amount < 20001) {
+                $auctionItem->minimum_bid = 50;
+            } else if($request->bid_amount > 20000) {
+                $auctionItem->minimum_bid = 100;
+            }
+
+            $auctionItem->save();
     
             $bid->load('user');
 
@@ -75,6 +89,21 @@ class AuctionItemBidController extends Controller
         $latestBid = AuctionItemBid::where('auction_item_id', $auctionItemId)
             ->latest('created_at')
             ->first();
+
+        $auctionItem = AuctionItem::find($auctionItemId);
+
+        if($latestBid->bid_amount > 100 && $latestBid->bid_amount < 601){
+            $auctionItem->minimum_bid = 5;
+        } else if($latestBid->bid_amount > 600 && $latestBid->bid_amount < 3001) {
+            $auctionItem->minimum_bid = 10;
+        } else if($latestBid->bid_amount > 3000 && $latestBid->bid_amount < 9001) {
+            $auctionItem->minimum_bid = 30;
+        } else if($latestBid->bid_amount > 9000 && $latestBid->bid_amount < 20001) {
+            $auctionItem->minimum_bid = 50;
+        } else if($latestBid->bid_amount > 20000) {
+            $auctionItem->minimum_bid = 100;
+        }
+        $auctionItem->save();
     
         if ($latestBid) {
             $latestBid->load('user');

@@ -241,7 +241,7 @@ class AuctionController extends Controller
     }
 
     public function auctionAway($auctionId, $userId) {
-        $auctionUser = AuctionUser::where('user_id', $userId)->first();
+        $auctionUser = AuctionUser::where('user_id', $userId)->where('auction_id', $auctionId)->first();
         if(!empty($auctionUser)) {
             $auctionUser->status = "away";
             $auctionUser->update();
