@@ -114,6 +114,10 @@ class AuctionController extends Controller
             "status" => "live"
         ]);
 
+        // remove all active users
+
+        $updatedCount = AuctionUser::where('auction_id', $auctionId)->update(['status' => 'away']);
+
         PushNotification::notifyActiveAuction($auction);
         PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
 
@@ -136,6 +140,10 @@ class AuctionController extends Controller
             ->first();
 
         PushNotification::notifyActiveItem(["status" => true, "data" => $auctionItem->id, "message" => "Get active item"]);
+        
+        $auction = Auction::where('id', $auction_id)->first();
+        $auction->active_item_id = $item_id;
+        $auction->save();
         
         return response()->json(['status' => true, 'message' => 'All users notified.'], 200);
     }
@@ -163,6 +171,10 @@ class AuctionController extends Controller
 
             PushNotification::notifyActiveItem(["status" => true, "data" => 0, "message" => "End active item"]);
         }
+
+        $auction = Auction::where('id', $auction_id)->first();
+        $auction->active_item_id = null;
+        $auction->save();
         
         return response()->json(['status' => true, 'message' => 'Auction item ended.']);
     }
@@ -182,9 +194,7 @@ class AuctionController extends Controller
     public function getUserAuctionedItems()
     {
         $user = Auth::user();
-        $items = AuctionItem::whereHas('bids', function ($query) use ($user) {
-            $query->where('user_id', $user->id);
-        })->get();
+        $items = AuctionItem::where('sold_to', $user->id)->get();
 
         return response()->json($items);
     }
@@ -264,9 +274,18 @@ class AuctionController extends Controller
     }
 
     public function endAuction($auction_id) {
+        $user = Auth::user();
+        if($user->role_id == 3) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
+        }
+
         $auction = Auction::where('id', $auction_id)->first();
         $auction->status = "pending";
+        $auction->active_item_id = null;
         $auction->save();
+
+        PushNotification::notifyActiveAuction($auction);
+        PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
 
         return response()->json(["status" => true, "message" => "Auction Ended"]);
     }

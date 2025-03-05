@@ -10,7 +10,7 @@ class Auction extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'stream_url', 'event_date', 'status'];
+    protected $fillable = ['name', 'stream_url', 'event_date', 'status', 'active_item_id'];
 
     public function items()
     {
