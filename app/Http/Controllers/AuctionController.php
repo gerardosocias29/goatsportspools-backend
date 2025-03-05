@@ -116,7 +116,7 @@ class AuctionController extends Controller
 
         // remove all active users
 
-        $updatedCount = AuctionUser::where('auction_id', $auctionId)->update(['status' => 'away']);
+        $updatedCount = AuctionUser::where('auction_id', $auction_id)->update(['status' => 'away']);
 
         PushNotification::notifyActiveAuction($auction);
         PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
