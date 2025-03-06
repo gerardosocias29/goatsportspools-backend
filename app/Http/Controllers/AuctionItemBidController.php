@@ -35,6 +35,18 @@ class AuctionItemBidController extends Controller
             ]);
         }
 
+        $totals = AuctionController::getRemainingBalance($auction_id, $userId);
+       
+        if(!empty($totals['total_budget'])){
+            $totalRemaining = $totals['remaining_balance'];
+            if($request->bid_amount > $totalRemaining) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Your bid exceeds your remaining budget of $" . number_format($totalRemaining, 2) . ".",
+                ]);
+            }
+        }
+
         $checkBid = AuctionItemBid::where('auction_item_id', $auctionItem->id)
             ->where('bid_amount', $request->bid_amount)
             ->first();

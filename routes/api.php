@@ -103,9 +103,11 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/{auctionId}/get-by-id', [AuctionController::class, 'getAuctionsById']);
         Route::get('/{auctionId}/join', [AuctionController::class, 'auctionJoin']);
         Route::get('/{auctionId}/members', [AuctionController::class, 'auctionMembers']);
+        Route::get('/{auctionId}/users', [AuctionController::class, 'auctionUsers']);
         
         Route::post('/create', [AuctionController::class, 'create']);
         Route::post('/{auction_id}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
+        Route::post('/{auction_id}/set-amounts', [AuctionController::class, 'setAmounts']);
 
         Route::post('/{auction_id}/{item_id}/end-active-item', [AuctionController::class, 'end']);
         Route::get('/{auction_id}/{item_id}/set-active-item', [AuctionController::class, 'setActiveItem']);

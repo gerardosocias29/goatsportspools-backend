@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\{Auction, AuctionUser, AuctionBidDetail, AuctionItem, NcaaTeam};
+use App\Models\{Auction, AuctionUser, AuctionBidDetail, AuctionItem, NcaaTeam, User};
 use App\Events\AuctionStarted;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
@@ -272,6 +272,51 @@ class AuctionController extends Controller
         return response()->json($auctionUsers);
     }
 
+    public function auctionUsers($auctionId) {
+
+        $usersAuction = User::with([
+            'auctions' => function($query) use ($auctionId) {
+                $query->where('auction_id', $auctionId);
+            },
+            'auctionItems' => function($query) use ($auctionId) {
+                $query->where('auction_id', $auctionId);
+                $query->orderBy('updated_at', 'desc');
+            }
+            ])->withSum(['auctionItems as total_sold_amount' => function ($query) use ($auctionId) {
+                $query->where('auction_id', $auctionId);
+            }], 'sold_amount')
+            ->get();
+
+        return response()->json($usersAuction);
+    }
+
+    public static function getRemainingBalance($auctionId, $userId) {
+        $userAuction = User::with([
+            'auctions' => function ($query) use ($auctionId) {
+                $query->where('auction_id', $auctionId);
+            }
+        ])->withSum(['auctionItems as total_sold_amount' => function ($query) use ($auctionId) {
+            $query->where('auction_id', $auctionId);
+        }], 'sold_amount')
+        ->where('id', $userId)
+        ->first();
+    
+        if (!$userAuction || $userAuction->auctions->isEmpty()) {
+            return response()->json(['error' => 'Auction not found'], 404);
+        }
+    
+        $totalBudget = $userAuction->auctions[0]->total_budget;
+        $totalSoldAmount = $userAuction->total_sold_amount;
+        $remainingBalance = ($totalBudget ?? 0) - ($totalSoldAmount ?? 0);
+    
+        return [
+            'remaining_balance' => $remainingBalance,
+            'total_budget' => $totalBudget,
+            'total_sold_amount' => $totalSoldAmount,
+            'userAuction' => $userAuction
+        ];
+    }
+
     public function endAuction($auction_id) {
         $user = Auth::user();
         if($user->role_id == 3) {
@@ -287,5 +332,25 @@ class AuctionController extends Controller
         PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
 
         return response()->json(["status" => true, "message" => "Auction Ended"]);
+    }
+
+    public function setAmounts(Request $request, $auction_id) {
+        $user_id = $request->user_id;
+
+        $auctionUser = AuctionUser::where('auction_id', $auction_id)->where('user_id', $user_id)->first();
+        if(!empty($auctionUser)) {
+            $auctionUser->escrow_amount = $request->escrow_amount;
+            $auctionUser->total_budget = $request->total_budget;
+            $auctionUser->save();
+        } else {
+            $auctionUser = new AuctionUser();
+            $auctionUser->user_id = $user_id;
+            $auctionUser->auction_id = $auction_id;
+            $auctionUser->escrow_amount = $request->escrow_amount;
+            $auctionUser->total_budget = $request->total_budget;
+            $auctionUser->save();
+        }
+
+        return response()->json(["status" => true, "message" => "Amounts successfully added!"]);
     }
 }

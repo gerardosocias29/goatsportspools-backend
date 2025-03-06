@@ -88,4 +88,16 @@ class User extends Authenticatable implements JWTSubject
     public function tie_bets() {
         return $this->hasMany(Bet::class)->where('wager_result', 'push')->whereNull('bet_group_id');
     }
+
+    public function auction() {
+        return $this->belongsTo(AuctionUser::class, 'user_id', 'id');
+    }
+
+    public function auctions() {
+        return $this->hasMany(AuctionUser::class, 'user_id', 'id');
+    }
+
+    public function auctionItems() {
+        return $this->hasMany(AuctionItem::class, 'sold_to', 'id');
+    }
 }
