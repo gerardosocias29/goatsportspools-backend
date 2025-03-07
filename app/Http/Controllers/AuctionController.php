@@ -75,19 +75,19 @@ class AuctionController extends Controller
                 'status' => 'pending',
             ]);
 
-            // Add Auction Items
-            $teams = NcaaTeam::all();
-            foreach ($teams as $team) {
-                AuctionItem::create([
-                    'auction_id' => $auction->id,
-                    'ncaa_team_id' => $team->id,
-                    'name' => $team['nickname'] . " - ".$team['school'],
-                    'description' => $team['school'] ?? null,
-                    'starting_bid' => 1,
-                    'minimum_bid' => 1,
-                    'target_bid' => null,
-                ]);
-            }
+            // // Add Auction Items
+            // $teams = NcaaTeam::all();
+            // foreach ($teams as $team) {
+            //     AuctionItem::create([
+            //         'auction_id' => $auction->id,
+            //         'ncaa_team_id' => $team->id,
+            //         'name' => $team['nickname'] . " - ".$team['school'],
+            //         'description' => $team['school'] ?? null,
+            //         'starting_bid' => 1,
+            //         'minimum_bid' => 1,
+            //         'target_bid' => null,
+            //     ]);
+            // }
 
             DB::commit();
 
@@ -302,7 +302,7 @@ class AuctionController extends Controller
         ->first();
     
         if (!$userAuction || $userAuction->auctions->isEmpty()) {
-            return response()->json(['error' => 'Auction not found'], 404);
+            return ['error' => 'Auction not found'];
         }
     
         $totalBudget = $userAuction->auctions[0]->total_budget;

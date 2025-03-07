@@ -10,7 +10,7 @@ class AuctionItem extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['auction_id', 'ncaa_team_id', 'name', 'description', 'sold_to', 'starting_bid', 'minimum_bid', 'target_bid', 'sold_amount', 'status'];
+    protected $fillable = ['auction_id', 'ncaa_team_id', 'name', 'description', 'sold_to', 'starting_bid', 'minimum_bid', 'target_bid', 'sold_amount', 'status', 'region', 'seed'];
 
     public function auction()
     {

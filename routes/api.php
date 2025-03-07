@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -96,6 +96,9 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/all', [TeamController::class, 'teams']);
     });
 
+    Route::group(['prefix' => 'ncaa_teams'], function () {
+        Route::get('/', [TeamController::class, 'ncaaIndex']);
+    });
 
     Route::group(['prefix' => 'auctions'], function () {
         Route::get('/', [AuctionController::class, 'getAuctions']);
@@ -108,6 +111,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/create', [AuctionController::class, 'create']);
         Route::post('/{auction_id}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
         Route::post('/{auction_id}/set-amounts', [AuctionController::class, 'setAmounts']);
+        Route::post('/{auction_id}/brackets', [AuctionItemController::class, 'storeBracket']);
 
         Route::post('/{auction_id}/{item_id}/end-active-item', [AuctionController::class, 'end']);
         Route::get('/{auction_id}/{item_id}/set-active-item', [AuctionController::class, 'setActiveItem']);

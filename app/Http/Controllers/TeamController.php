@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Team};
+use App\Models\{Team, NcaaTeam};
 
 class TeamController extends Controller
 {
@@ -20,6 +20,11 @@ class TeamController extends Controller
             ];
         });
 
+        return response()->json($teams);
+    }
+
+    public function ncaaIndex() {
+        $teams = NcaaTeam::get();
         return response()->json($teams);
     }
     
