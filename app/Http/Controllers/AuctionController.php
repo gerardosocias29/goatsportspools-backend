@@ -334,6 +334,24 @@ class AuctionController extends Controller
         return response()->json(["status" => true, "message" => "Auction Ended"]);
     }
 
+    public function cancelAuction($auction_id) {
+        $user = Auth::user();
+        if($user->role_id == 3) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
+        }
+
+        $auction = Auction::where('id', $auction_id)->first();
+        $auction->status = "pending";
+        $auction->save();
+
+        PushNotification::notifyActiveAuction($auction);
+        PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
+
+        $auction->delete();
+
+        return response()->json(["status" => true, "message" => "Auction Cancelled"]);
+    }
+
     public function setAmounts(Request $request, $auction_id) {
         $user_id = $request->user_id;
 
