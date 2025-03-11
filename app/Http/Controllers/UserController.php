@@ -162,7 +162,7 @@ class UserController extends Controller
         return response($users);
     }
 
-    public function All(Request $request) {
+    public function getUsers(Request $request) {
         $filter = json_decode($request->filter);
         $usersQuery = User::with(['role' => function($query) {
             $query->select('id', 'name');
