@@ -228,7 +228,7 @@ class UserController extends Controller
 
     public function getAllUsers(Request $request) {
         if($request->has('query')){
-            $users = User::where('id', '>', env('LAST_USER_ID', 30))->get();
+            $users = User::where('id', '>', env('LAST_USER_ID', 30))->orderBy('id', 'ASC')->get();
         } else { 
             $users = User::get();
         }

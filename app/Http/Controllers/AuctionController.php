@@ -272,8 +272,7 @@ class AuctionController extends Controller
         return response()->json($auctionUsers);
     }
 
-    public function auctionUsers($auctionId) {
-
+    public function auctionUsers(Request $request, $auctionId) {
         $usersAuction = User::with([
             'auctions' => function($query) use ($auctionId) {
                 $query->where('auction_id', $auctionId);
@@ -284,8 +283,14 @@ class AuctionController extends Controller
             }
             ])->withSum(['auctionItems as total_sold_amount' => function ($query) use ($auctionId) {
                 $query->where('auction_id', $auctionId);
-            }], 'sold_amount')
-            ->get();
+            }], 'sold_amount');
+
+        if($request->has('query')){
+            $usersAuction = $usersAuction->where('id', '>', env('LAST_USER_ID', 30))->orderBy('id', 'ASC')->get();
+        } else {
+            $usersAuction = $usersAuction->get();
+        }
+       
 
         return response()->json($usersAuction);
     }
