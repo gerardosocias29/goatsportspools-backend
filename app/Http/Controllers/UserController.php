@@ -227,7 +227,11 @@ class UserController extends Controller
     }
 
     public function getAllUsers(Request $request) {
-        $users = User::get();
+        if($request->has('query')){
+            $users = User::where('id', '>', env('LAST_USER_ID', 30))->get();
+        } else { 
+            $users = User::get();
+        }
         return response()->json($users);
     }
 }

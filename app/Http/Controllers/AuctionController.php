@@ -35,9 +35,9 @@ class AuctionController extends Controller
     public function getAuctionsById(Request $request, $auctionId) {
         $user = Auth::user();
         $auction = Auction::with(['joinedUsers.user', 'items.ncaa_team', 'items.bids.user', 
-            // 'items' => function ($query) {
-            //     $query->whereNull('sold_to');
-            // }, 
+            'items' => function ($query) {
+                $query->orderBy('seed', 'ASC')->orderBy('region', 'ASC');
+            }, 
             'joinedUsers' => function ($query) {
                 $query->where('status', 'joined');
             }, 
