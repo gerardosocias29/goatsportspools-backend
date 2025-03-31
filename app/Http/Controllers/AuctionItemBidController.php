@@ -14,7 +14,8 @@ class AuctionItemBidController extends Controller
         $request->validate(['bid_amount' => 'required|numeric|min:0']);
 
         $user = Auth::user();
-        $userId = $user->id;
+
+        $userId = env('DEFAULT_ANONYMOUS_USER_ID', 1);
         if($request->has('user_id')){
             $userId = $request->user_id;
         }
