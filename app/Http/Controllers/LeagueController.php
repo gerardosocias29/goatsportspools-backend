@@ -196,9 +196,21 @@ class LeagueController extends Controller
     public function index(Request $request) {
         $userId = Auth::user()->id;
         $roleId = Auth::user()->role_id;
-    
+
         $filter = json_decode($request->filter);
-    
+
+        // Provide default values if filter is null or incomplete
+        if (!$filter) {
+            $filter = (object)[
+                'rows' => 10,
+                'page' => 0,
+                'filters' => (object)['global' => (object)['value' => '']]
+            ];
+        } else {
+            $filter->rows = $filter->rows ?? 10;
+            $filter->page = $filter->page ?? 0;
+        }
+
         $leaguesQuery = League::with(['league_users.user']);
         // if ($roleId == 3) {
         //     $leaguesQuery->whereHas('participants', function ($query) use ($userId) {
@@ -227,7 +239,7 @@ class LeagueController extends Controller
     }    
 
     private function applyFilters($query, $filter) {
-        if (!empty($filter->filters->global->value)) {
+        if (!empty($filter->filters->global->value ?? null)) {
             $query->where(function (Builder $query) use ($filter) {
                 $value = '%' . $filter->filters->global->value . '%';
                 $league = new League();
