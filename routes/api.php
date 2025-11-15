@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -127,7 +127,30 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/remove-bid', [AuctionItemBidController::class, 'removeBid']);
         Route::post('/{auction_id}/{item_id}/bid', [AuctionItemBidController::class, 'placeBid']);
     });
+
+    // Squares Pools Routes (Authenticated)
+    Route::group(['prefix' => 'squares-pools'], function () {
+        // Admin routes (pool management)
+        Route::get('/', [SquaresPoolController::class, 'index']); // Get all pools
+        Route::get('/{id}', [SquaresPoolController::class, 'show']); // Get single pool
+        Route::post('/', [SquaresPoolController::class, 'store']); // Create pool
+        Route::post('/{id}/assign-numbers-manual', [SquaresPoolController::class, 'assignNumbersManual']); // Manual number assignment
+        Route::post('/{id}/close', [SquaresPoolController::class, 'closePool']); // Close pool
+        Route::delete('/{id}', [SquaresPoolController::class, 'destroy']); // Delete pool
+
+        // Player routes (joining and playing)
+        Route::post('/join', [SquaresPlayerController::class, 'joinPool']); // Join pool with number + password
+        Route::get('/my-joined', [SquaresPlayerController::class, 'getMyJoinedPools']); // Get my joined pools
+        Route::get('/{poolId}/squares', [SquaresPlayerController::class, 'getSquares']); // Get all squares
+        Route::get('/{poolId}/my-squares', [SquaresPlayerController::class, 'getMySquares']); // Get my squares
+        Route::post('/{poolId}/claim-square', [SquaresPlayerController::class, 'claimSquare']); // Claim a square
+        Route::post('/{poolId}/release-square', [SquaresPlayerController::class, 'releaseSquare']); // Release a square
+        Route::post('/{poolId}/add-credits', [SquaresPlayerController::class, 'addCredits']); // Add credits (admin only)
+    });
 });
+
+// Squares Pools Public Routes (No Auth Required)
+Route::get('/squares-pools/by-number/{poolNumber}', [SquaresPlayerController::class, 'getPoolByNumber']); // Get pool by number (public)
 
 Route::group(['middleware' => 'verify.jwt.jwks'], function () {
     Route::get('/user-details', [UserController::class, 'getUserDetails']);
