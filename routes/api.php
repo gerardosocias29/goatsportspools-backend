@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -128,6 +128,12 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/{auction_id}/{item_id}/bid', [AuctionItemBidController::class, 'placeBid']);
     });
 
+    // Game Reward Types Routes
+    Route::group(['prefix' => 'game-reward-types'], function () {
+        Route::get('/', [GameRewardTypeController::class, 'index']); // Get all reward types
+        Route::get('/{id}', [GameRewardTypeController::class, 'show']); // Get single reward type
+    });
+
     // Squares Pools Routes (Authenticated)
     Route::group(['prefix' => 'squares-pools'], function () {
         // Admin routes (pool management)
@@ -137,6 +143,11 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/{id}/assign-numbers-manual', [SquaresPoolController::class, 'assignNumbersManual']); // Manual number assignment
         Route::post('/{id}/close', [SquaresPoolController::class, 'closePool']); // Close pool
         Route::delete('/{id}', [SquaresPoolController::class, 'destroy']); // Delete pool
+
+        // Winner calculation routes
+        Route::post('/{id}/calculate-winners', [SquaresPoolController::class, 'calculateWinners']); // Calculate winners for specific quarter
+        Route::post('/{id}/calculate-all-winners', [SquaresPoolController::class, 'calculateAllWinners']); // Calculate all winners
+        Route::get('/{id}/winners', [SquaresPoolController::class, 'getWinners']); // Get winners
 
         // Player routes (joining and playing)
         Route::post('/join', [SquaresPlayerController::class, 'joinPool']); // Join pool with number + password

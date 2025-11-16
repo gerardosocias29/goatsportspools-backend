@@ -12,7 +12,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Close expired pools every minute
+        $schedule->command('squares:close-expired-pools')->everyMinute();
+
+        // Assign numbers for scheduled Type B pools every minute
+        $schedule->command('squares:assign-scheduled-numbers')->everyMinute();
     }
 
     /**

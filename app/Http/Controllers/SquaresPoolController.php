@@ -6,6 +6,8 @@ use App\Models\SquaresPool;
 use App\Models\SquaresPoolSquare;
 use App\Models\SquaresPoolPlayer;
 use App\Models\Game;
+use App\Services\WinnerCalculationService;
+use App\Services\QRCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -119,6 +121,19 @@ class SquaresPoolController extends Controller
             // Generate unique pool number
             $poolNumber = SquaresPool::generatePoolNumber();
 
+            // Determine grid fee type (first 10 grids are free)
+            $adminPoolsCount = SquaresPool::where('admin_id', auth()->id())->count();
+            $gridFeeType = 'Free';
+            if ($adminPoolsCount >= 60) {
+                $gridFeeType = 'Standard';
+            } elseif ($adminPoolsCount >= 10) {
+                $gridFeeType = $adminPoolsCount < 20 ? 'Min1' : 'Min2';
+            }
+
+            // Generate QR code
+            $qrCodeService = new QRCodeService();
+            $qrCodeUrl = $qrCodeService->generatePoolQRCode($poolNumber, $request->pool_name);
+
             // Create pool
             $pool = SquaresPool::create([
                 'admin_id' => auth()->id(),
@@ -126,8 +141,12 @@ class SquaresPoolController extends Controller
                 'pool_number' => $poolNumber,
                 'password' => Hash::make($request->password),
                 'pool_name' => $request->pool_name,
+                'pool_description' => $request->pool_description,
                 'pool_type' => $request->pool_type,
                 'player_pool_type' => $request->player_pool_type,
+                'reward_type' => $request->reward_type ?? 'CreditsRewards',
+                'grid_fee_type' => $gridFeeType,
+                'admin_grid_number' => $adminPoolsCount + 1,
                 'home_team_id' => $request->home_team_id,
                 'visitor_team_id' => $request->visitor_team_id,
                 'entry_fee' => $request->entry_fee,
@@ -136,10 +155,14 @@ class SquaresPoolController extends Controller
                 'close_datetime' => $request->close_datetime,
                 'number_assign_datetime' => $request->number_assign_datetime,
                 'pool_status' => 'open',
+                'qr_code_url' => $qrCodeUrl,
+                'game_reward_type_id' => $request->game_reward_type_id ?? 1,
                 'reward1_percent' => $request->reward1_percent,
                 'reward2_percent' => $request->reward2_percent,
                 'reward3_percent' => $request->reward3_percent,
                 'reward4_percent' => $request->reward4_percent,
+                'create_user_id' => auth()->id(),
+                'create_date' => now()->toDateString(),
             ]);
 
             // Create 100 squares (10x10 grid)
@@ -150,6 +173,8 @@ class SquaresPoolController extends Controller
                         'pool_id' => $pool->id,
                         'x_coordinate' => $x,
                         'y_coordinate' => $y,
+                        'create_user_id' => auth()->id(),
+                        'create_date' => now()->toDateString(),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
@@ -333,6 +358,95 @@ class SquaresPoolController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Pool deleted successfully'
+        ]);
+    }
+
+    /**
+     * Calculate winners for a specific quarter
+     * POST /api/squares-pools/{id}/calculate-winners
+     */
+    public function calculateWinners(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'quarter' => 'required|integer|min:1|max:4',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $pool = SquaresPool::findOrFail($id);
+
+        // Check authorization
+        if ($pool->admin_id !== auth()->id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        try {
+            $winnerService = new WinnerCalculationService();
+            $result = $winnerService->calculateWinners($id, $request->quarter);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Calculate winners for all quarters at once
+     * POST /api/squares-pools/{id}/calculate-all-winners
+     */
+    public function calculateAllWinners($id)
+    {
+        $pool = SquaresPool::findOrFail($id);
+
+        // Check authorization
+        if ($pool->admin_id !== auth()->id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        try {
+            $winnerService = new WinnerCalculationService();
+            $results = $winnerService->calculateAllWinners($id);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Winners calculated for all quarters',
+                'data' => $results
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Get winners for a pool
+     * GET /api/squares-pools/{id}/winners
+     */
+    public function getWinners($id)
+    {
+        $pool = SquaresPool::with(['winners.player', 'winners.square'])->findOrFail($id);
+
+        return response()->json([
+            'status' => true,
+            'data' => $pool->winners
         ]);
     }
 }
