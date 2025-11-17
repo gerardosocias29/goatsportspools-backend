@@ -68,15 +68,15 @@ class GameController extends Controller
 
     public function games(Request $request) {
         $user = Auth::user();
-    
+
         $filter = json_decode($request->filter);
-    
+
         $type = $request->type;
-    
+
         $tease_point = $type == "teaser_6" ? 6 : ($type == "teaser_6_5" ? 6.5 : ($type == "teaser_7" ? 7 : 0));
         if ($type == null || $type == "parlay" || $type == "straight") {
             $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
-    
+
             $gamesQuery = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
                 ->where('game_datetime', '>', $oneMinuteAgo)
                 ->where('visitor_team_score', '<', 1)
@@ -86,10 +86,17 @@ class GameController extends Controller
                           ->where('under_total', '>=', 4);
                 })
                 ->orderBy('game_datetime', 'ASC');
-    
+
             $gamesQuery = $this->applyFilters($gamesQuery, $filter);
-            $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
-    
+
+            // Handle both V1 (with pagination filter) and V2 (without filter)
+            if ($filter && isset($filter->rows)) {
+                $games = $gamesQuery->paginate($filter->rows, ['*'], 'page', $filter->page + 1);
+            } else {
+                // V2: Return all games without pagination
+                $games = ['data' => $gamesQuery->get()];
+            }
+
             return response()->json($games);
         } else {
             // adjust tease points, 
@@ -117,23 +124,29 @@ class GameController extends Controller
                 return $game;
             });
 
-            // Paginate the adjusted games
-            $currentPage = $filter->page + 1;
-            $perPage = $filter->rows;
-            $paginatedGames = new \Illuminate\Pagination\LengthAwarePaginator(
-                $adjustedGames->forPage($currentPage, $perPage),
-                $adjustedGames->count(),
-                $perPage,
-                $currentPage,
-                ['path' => request()->url(), 'query' => request()->query()]
-            );
-    
-            return response()->json($paginatedGames);
+            // Handle both V1 (with pagination filter) and V2 (without filter)
+            if ($filter && isset($filter->rows)) {
+                // Paginate the adjusted games
+                $currentPage = $filter->page + 1;
+                $perPage = $filter->rows;
+                $paginatedGames = new \Illuminate\Pagination\LengthAwarePaginator(
+                    $adjustedGames->forPage($currentPage, $perPage),
+                    $adjustedGames->count(),
+                    $perPage,
+                    $currentPage,
+                    ['path' => request()->url(), 'query' => request()->query()]
+                );
+                return response()->json($paginatedGames);
+            } else {
+                // V2: Return all adjusted games without pagination
+                return response()->json(['data' => $adjustedGames]);
+            }
         }
     }    
 
     private function applyFilters($query, $filter) {
-        if (!empty($filter->filters->global->value)) {
+        // Check if filter exists and has global filters
+        if ($filter && isset($filter->filters->global->value) && !empty($filter->filters->global->value)) {
             $query->where(function (Builder $query) use ($filter) {
                 $value = '%' . $filter->filters->global->value . '%';
                 $game = new Game();
