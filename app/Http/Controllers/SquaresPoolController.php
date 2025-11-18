@@ -71,6 +71,31 @@ class SquaresPoolController extends Controller
         $pool->claimed_squares = $pool->claimed_squares_count;
         $pool->available_squares = $pool->available_squares_count;
 
+        // Check if current user has joined this pool
+        $currentUserId = auth()->id();
+        $userJoined = false;
+
+        if ($currentUserId) {
+            // Check if user has any claimed squares
+            $userJoined = $pool->squares()->where('player_id', $currentUserId)->exists();
+
+            // Also check if user is in the players table for this pool
+            if (!$userJoined) {
+                $userJoined = $pool->players()->where('player_id', $currentUserId)->exists();
+            }
+        }
+
+        $pool->user_joined = $userJoined;
+
+        // Hide password from non-admins
+        $currentUserRoleId = auth()->user()->role_id ?? null;
+        $isPoolAdmin = $pool->admin_id === $currentUserId || $pool->created_by === $currentUserId;
+        $isSuperAdmin = $currentUserRoleId === 1 || $currentUserRoleId === 2;
+
+        if (!$isPoolAdmin && !$isSuperAdmin) {
+            unset($pool->password);
+        }
+
         return response()->json($pool);
     }
 
@@ -497,6 +522,82 @@ class SquaresPoolController extends Controller
         return response()->json([
             'status' => true,
             'data' => $pool->winners
+        ]);
+    }
+
+    /**
+     * Get joined players for a pool
+     * GET /api/squares-pools/{id}/players
+     */
+    public function getPlayers($id)
+    {
+        $pool = SquaresPool::findOrFail($id);
+        $user = auth()->user();
+
+        $isPoolAdmin = $user && $pool->admin_id === $user->id;
+        $isPlatformAdmin = $user && in_array((int) $user->role_id, [1, 2]);
+
+        if (!$isPoolAdmin && !$isPlatformAdmin) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $playerRecords = SquaresPoolPlayer::where('pool_id', $id)
+            ->with('player')
+            ->orderBy('joined_at', 'asc')
+            ->get();
+
+        $squaresByPlayer = SquaresPoolSquare::where('pool_id', $id)
+            ->whereNotNull('player_id')
+            ->with('player')
+            ->get()
+            ->groupBy('player_id');
+
+        $players = $playerRecords->map(function ($record) use ($squaresByPlayer) {
+            $playerSquares = $squaresByPlayer->get($record->player_id, collect());
+            $latestClaimed = $playerSquares->max('claimed_at');
+
+            return [
+                'pool_player_id' => $record->id,
+                'player_id' => $record->player_id,
+                'player' => $record->player,
+                'credits_available' => (int) $record->credits_available,
+                'available_credits' => (int) $record->credits_available,
+                'squares_count' => $record->squares_count ?? $playerSquares->count(),
+                'claimed_squares' => $playerSquares->count(),
+                'joined_at' => optional($record->joined_at)->toIso8601String(),
+                'latest_square_claimed_at' => $latestClaimed ? $latestClaimed->toIso8601String() : null,
+            ];
+        });
+
+        // Include any players who have claimed squares but do not have a SquaresPoolPlayer record
+        $squaresByPlayer->each(function ($playerSquares, $playerId) use (&$players) {
+            $alreadyIncluded = $players->firstWhere('player_id', $playerId);
+            if ($alreadyIncluded) {
+                return;
+            }
+
+            $player = optional($playerSquares->first())->player;
+            $latestClaimed = $playerSquares->max('claimed_at');
+
+            $players->push([
+                'pool_player_id' => null,
+                'player_id' => $playerId,
+                'player' => $player,
+                'credits_available' => 0,
+                'available_credits' => 0,
+                'squares_count' => $playerSquares->count(),
+                'claimed_squares' => $playerSquares->count(),
+                'joined_at' => null,
+                'latest_square_claimed_at' => $latestClaimed ? $latestClaimed->toIso8601String() : null,
+            ]);
+        });
+
+        return response()->json([
+            'status' => true,
+            'data' => $players->values()
         ]);
     }
 }

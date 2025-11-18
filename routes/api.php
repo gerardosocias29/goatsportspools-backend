@@ -150,6 +150,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/{id}/calculate-winners', [SquaresPoolController::class, 'calculateWinners']); // Calculate winners for specific quarter
         Route::post('/{id}/calculate-all-winners', [SquaresPoolController::class, 'calculateAllWinners']); // Calculate all winners
         Route::get('/{id}/winners', [SquaresPoolController::class, 'getWinners']); // Get winners
+        Route::get('/{id}/players', [SquaresPoolController::class, 'getPlayers']); // Get joined players for a pool
 
         // Player routes (joining and playing)
         Route::post('/join', [SquaresPlayerController::class, 'joinPool']); // Join pool with number + password
