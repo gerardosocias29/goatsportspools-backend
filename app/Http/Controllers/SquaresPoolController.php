@@ -339,6 +339,56 @@ class SquaresPoolController extends Controller
     }
 
     /**
+     * Reopen a closed pool
+     * POST /api/squares-pools/{id}/reopen
+     */
+    public function reopenPool($id)
+    {
+        $pool = SquaresPool::findOrFail($id);
+
+        if ($pool->admin_id !== auth()->id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $pool->update(['pool_status' => 'open']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pool reopened successfully'
+        ]);
+    }
+
+    /**
+     * Update pool settings (admin only)
+     * PATCH /api/squares-pools/{id}/settings
+     */
+    public function updateSettings(Request $request, $id)
+    {
+        $pool = SquaresPool::findOrFail($id);
+
+        if ($pool->admin_id !== auth()->id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $allowed = ['player_pool_type', 'credit_cost', 'max_squares_per_player', 'entry_fee'];
+        $updates = $request->only($allowed);
+
+        $pool->update($updates);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pool settings updated successfully',
+            'data' => $pool->fresh()
+        ]);
+    }
+
+    /**
      * Delete a pool
      * DELETE /api/squares-pools/{id}
      */

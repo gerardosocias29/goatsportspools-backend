@@ -70,10 +70,17 @@ class SquaresPlayerController extends Controller
         }
 
         // Create player record
+        // For CREDIT type pools, give initial credits based on entry fee or default to 10
+        $initialCredits = 0;
+        if ($pool->player_pool_type === 'CREDIT') {
+            // Give credits based on entry fee (e.g., $1 = 1 credit) or default to 10 credits
+            $initialCredits = $pool->entry_fee > 0 ? (int)$pool->entry_fee : 10;
+        }
+
         $player = SquaresPoolPlayer::create([
             'pool_id' => $pool->id,
             'player_id' => auth()->id(),
-            'credits_available' => 0, // Credits can be added by admin later
+            'credits_available' => $initialCredits,
             'squares_count' => 0,
         ]);
 

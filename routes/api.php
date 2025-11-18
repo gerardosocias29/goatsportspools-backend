@@ -142,6 +142,8 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/', [SquaresPoolController::class, 'store']); // Create pool
         Route::post('/{id}/assign-numbers-manual', [SquaresPoolController::class, 'assignNumbersManual']); // Manual number assignment
         Route::post('/{id}/close', [SquaresPoolController::class, 'closePool']); // Close pool
+        Route::post('/{id}/reopen', [SquaresPoolController::class, 'reopenPool']); // Reopen pool
+        Route::patch('/{id}/settings', [SquaresPoolController::class, 'updateSettings']); // Update pool settings
         Route::delete('/{id}', [SquaresPoolController::class, 'destroy']); // Delete pool
 
         // Winner calculation routes
