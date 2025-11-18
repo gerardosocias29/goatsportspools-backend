@@ -201,16 +201,30 @@ class SquaresPlayerController extends Controller
             ], 400);
         }
 
-        // Check if user is a member
+        // Check if user is a member or pool admin
+        $isPoolAdmin = $pool->admin_id === auth()->id() || $pool->created_by === auth()->id();
+
         $playerRecord = SquaresPoolPlayer::where('pool_id', $poolId)
             ->where('player_id', auth()->id())
             ->first();
 
-        if (!$playerRecord) {
+        // If not pool admin and not a player, require join
+        if (!$isPoolAdmin && !$playerRecord) {
             return response()->json([
                 'status' => false,
                 'message' => 'You must join this pool first'
             ], 403);
+        }
+
+        // If pool admin but no player record, create one automatically
+        if ($isPoolAdmin && !$playerRecord) {
+            $playerRecord = SquaresPoolPlayer::create([
+                'pool_id' => $poolId,
+                'player_id' => auth()->id(),
+                'join_status' => 'Approved',
+                'credits_available' => 0, // Admin doesn't need credits for their own pool
+                'squares_count' => 0,
+            ]);
         }
 
         // Check max squares limit
