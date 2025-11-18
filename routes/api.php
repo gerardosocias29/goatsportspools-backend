@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -160,6 +160,23 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/{poolId}/claim-square', [SquaresPlayerController::class, 'claimSquare']); // Claim a square
         Route::post('/{poolId}/release-square', [SquaresPlayerController::class, 'releaseSquare']); // Release a square
         Route::post('/{poolId}/add-credits', [SquaresPlayerController::class, 'addCredits']); // Add credits (admin only)
+    });
+
+    // Credit Request Routes
+    Route::group(['prefix' => 'credit-requests'], function () {
+        // Player → Commissioner credit requests
+        Route::post('/pools/{poolId}/request', [CreditRequestController::class, 'requestCreditsFromCommissioner']); // Request credits from commissioner
+        Route::get('/pools/{poolId}', [CreditRequestController::class, 'getPoolRequests']); // Get requests for a specific pool (commissioner only)
+        Route::get('/commissioner', [CreditRequestController::class, 'getCommissionerRequests']); // Get all requests where I'm commissioner
+        Route::patch('/{requestId}', [CreditRequestController::class, 'updateCreditRequest']); // Approve/deny request
+
+        // Square Admin → Superadmin credit requests
+        Route::post('/admin/request', [CreditRequestController::class, 'requestCreditsFromSuperadmin']); // Request credits from superadmin
+        Route::get('/admin', [CreditRequestController::class, 'getSuperadminRequests']); // Get all admin requests (superadmin only)
+        Route::patch('/admin/{requestId}', [CreditRequestController::class, 'updateAdminCreditRequest']); // Approve/deny admin request (superadmin only)
+
+        // Get my own requests
+        Route::get('/my-requests', [CreditRequestController::class, 'getMyRequests']); // Get my credit requests
     });
 });
 
