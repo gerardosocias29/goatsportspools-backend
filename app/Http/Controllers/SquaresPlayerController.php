@@ -20,7 +20,7 @@ class SquaresPlayerController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'pool_number' => 'required|string',
-            'password' => 'required|string',
+            'password' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -40,12 +40,20 @@ class SquaresPlayerController extends Controller
             ], 404);
         }
 
-        // Check password
-        if (!Hash::check($request->password, $pool->password)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Incorrect password'
-            ], 401);
+        // Check password only if pool has one set
+        if ($pool->password) {
+            if (!$request->password) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Password required for this pool'
+                ], 401);
+            }
+            if (!Hash::check($request->password, $pool->password)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Incorrect password'
+                ], 401);
+            }
         }
 
         // Check if pool is open
@@ -70,12 +78,8 @@ class SquaresPlayerController extends Controller
         }
 
         // Create player record
-        // For CREDIT type pools, give initial credits based on entry fee or default to 10
-        $initialCredits = 0;
-        if ($pool->player_pool_type === 'CREDIT') {
-            // Give credits based on entry fee (e.g., $1 = 1 credit) or default to 10 credits
-            $initialCredits = $pool->entry_fee > 0 ? (int)$pool->entry_fee : 10;
-        }
+        // Give initial credits based on pool's initial_credits setting
+        $initialCredits = $pool->initial_credits ?? 0;
 
         $player = SquaresPoolPlayer::create([
             'pool_id' => $pool->id,

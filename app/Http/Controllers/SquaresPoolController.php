@@ -18,23 +18,53 @@ class SquaresPoolController extends Controller
     /**
      * Get all pools (with optional filters)
      * GET /api/squares-pools
+     *
+     * Pool visibility based on role:
+     * - role_id 1 (Superadmin): Can see ALL pools
+     * - role_id 2 (Square Admin): Can see pools they created + pools they joined
+     * - role_id 3+ (Players): Can see only pools they joined
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+        $roleId = $user ? (int) $user->role_id : 99;
+
         $query = SquaresPool::with(['game', 'homeTeam', 'visitorTeam', 'admin'])
             ->whereNull('deleted_at');
+
+        // Role-based filtering
+        if ($roleId === 1) {
+            // Superadmin: See all pools (no filter)
+        } elseif ($roleId === 2) {
+            // Square Admin: See pools they created OR pools they joined
+            $joinedPoolIds = SquaresPoolPlayer::where('player_id', $user->id)->pluck('pool_id')->toArray();
+            $query->where(function($q) use ($user, $joinedPoolIds) {
+                $q->where('admin_id', $user->id)
+                  ->orWhereIn('id', $joinedPoolIds);
+            });
+        } else {
+            // Players (role 3+): See only pools they joined
+            $joinedPoolIds = SquaresPoolPlayer::where('player_id', $user->id)->pluck('pool_id')->toArray();
+            $query->whereIn('id', $joinedPoolIds);
+        }
 
         // Filter by status
         if ($request->has('status')) {
             $status = $request->get('status');
-            if ($status === 'active') {
+            if ($status === 'active' || $status === 'open') {
                 $query->where('pool_status', 'open');
             } elseif ($status === 'completed') {
                 $query->where('pool_status', 'completed');
+            } elseif ($status === 'SelectOpen') {
+                $query->where('pool_status', 'open');
+            } elseif ($status === 'SelectClosed') {
+                $query->where('pool_status', 'closed');
+            } elseif ($status === 'GameStarted') {
+                $query->where('pool_status', 'in_progress');
             }
         }
 
-        // Filter by admin (my pools)
+        // Filter by admin (my pools) - for admins only
         if ($request->has('my_pools') && $request->get('my_pools') === 'true') {
             $query->where('admin_id', auth()->id());
         }
@@ -105,17 +135,23 @@ class SquaresPoolController extends Controller
      */
     public function store(Request $request)
     {
+        // Determine if password is required based on access type
+        // Password is only required when access_type == 'PasswordOpen' (maps to player_pool_type)
+        $accessType = $request->input('access_type', $request->input('costType', ''));
+        $passwordRequired = ($accessType === 'PasswordOpen' || !empty($request->password));
+
         $validator = Validator::make($request->all(), [
             'game_id' => 'required|exists:games,id',
             'pool_name' => 'required|string|max:255',
-            'password' => 'required|string|min:4',
+            'password' => $passwordRequired ? 'required|string|min:4' : 'nullable|string|min:4',
             'pool_type' => 'required|in:A,B,C,D',
-            'player_pool_type' => 'required|in:OPEN,CREDIT',
+            'player_pool_type' => 'required|in:OPEN,CREDIT,FREE',
             'home_team_id' => 'required|exists:teams,id',
             'visitor_team_id' => 'required|exists:teams,id',
             'entry_fee' => 'required|numeric|min:0',
             'max_squares_per_player' => 'nullable|integer|min:1|max:100',
-            'credit_cost' => 'required_if:player_pool_type,CREDIT|nullable|integer|min:1|max:10',
+            'credit_cost' => 'required_if:player_pool_type,CREDIT|nullable|integer|min:0|max:1000',
+            'initial_credits' => 'nullable|integer|min:0',
             'close_datetime' => 'required_if:pool_type,B,C|nullable|date',
             'number_assign_datetime' => 'required_if:pool_type,B|nullable|date',
             'reward1_percent' => 'required|numeric|min:0|max:100',
@@ -164,7 +200,7 @@ class SquaresPoolController extends Controller
                 'admin_id' => auth()->id(),
                 'game_id' => $request->game_id,
                 'pool_number' => $poolNumber,
-                'password' => Hash::make($request->password),
+                'password' => $request->password ? Hash::make($request->password) : null,
                 'pool_name' => $request->pool_name,
                 'pool_description' => $request->pool_description,
                 'pool_type' => $request->pool_type,
@@ -177,6 +213,7 @@ class SquaresPoolController extends Controller
                 'entry_fee' => $request->entry_fee,
                 'max_squares_per_player' => $request->max_squares_per_player,
                 'credit_cost' => $request->credit_cost,
+                'initial_credits' => $request->initial_credits ?? 0,
                 'close_datetime' => $request->close_datetime,
                 'number_assign_datetime' => $request->number_assign_datetime,
                 'pool_status' => 'open',

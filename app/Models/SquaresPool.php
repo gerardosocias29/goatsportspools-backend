@@ -27,6 +27,7 @@ class SquaresPool extends Model
         'entry_fee',
         'max_squares_per_player',
         'credit_cost',
+        'initial_credits',
         'close_datetime',
         'number_assign_datetime',
         'pool_status',
