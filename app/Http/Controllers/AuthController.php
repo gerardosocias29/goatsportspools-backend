@@ -43,7 +43,7 @@ class AuthController extends Controller
             'state' => $request->state,
             'zipcode' => $request->zipcode,
             'username' => $request->username,
-            'role_id' => 2
+            'role_id' => 3
         ]);
 
         return response()->json(["status" => true, 'message' => 'User successfully registered'], 201);
