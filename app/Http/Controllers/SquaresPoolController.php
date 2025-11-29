@@ -8,9 +8,11 @@ use App\Models\SquaresPoolPlayer;
 use App\Models\Game;
 use App\Services\WinnerCalculationService;
 use App\Services\QRCodeService;
+use App\Mail\PoolClosedMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class SquaresPoolController extends Controller
@@ -335,6 +337,9 @@ class SquaresPoolController extends Controller
 
             DB::commit();
 
+            // Send pool closed emails to all players
+            $this->sendPoolClosedEmails($pool, $xNumbers, $yNumbers);
+
             return response()->json([
                 'status' => true,
                 'message' => 'Numbers assigned successfully',
@@ -636,5 +641,78 @@ class SquaresPoolController extends Controller
             'status' => true,
             'data' => $players->values()
         ]);
+    }
+
+    /**
+     * Send pool closed notification emails to all players
+     *
+     * @param SquaresPool $pool
+     * @param array $xNumbers
+     * @param array $yNumbers
+     */
+    private function sendPoolClosedEmails(SquaresPool $pool, array $xNumbers, array $yNumbers)
+    {
+        try {
+            // Load pool with related data
+            $pool->load(['admin', 'homeTeam', 'visitorTeam', 'squares', 'players.player']);
+
+            $homeTeamName = $pool->homeTeam->name ?? 'Home Team';
+            $visitorTeamName = $pool->visitorTeam->name ?? 'Visitor Team';
+            $adminUsername = $pool->admin->username ?? $pool->admin->name ?? 'Pool Manager';
+            $totalSquaresFilled = $pool->squares->whereNotNull('player_id')->count();
+            $poolUrl = env('APP_FRONTEND_URL', env('APP_URL')) . '/squares/pool/' . $pool->id;
+
+            // Get all players who have claimed squares
+            $playersWithSquares = $pool->squares
+                ->whereNotNull('player_id')
+                ->groupBy('player_id');
+
+            foreach ($playersWithSquares as $playerId => $playerSquares) {
+                $player = $playerSquares->first()->player;
+
+                if (!$player || !$player->email) {
+                    continue;
+                }
+
+                // Get player's squares with assigned numbers
+                $squaresData = $playerSquares->map(function ($square) use ($xNumbers, $yNumbers) {
+                    return [
+                        'x_number' => $xNumbers[$square->x_coordinate] ?? $square->x_number,
+                        'y_number' => $yNumbers[$square->y_coordinate] ?? $square->y_number,
+                        'x_coordinate' => $square->x_coordinate,
+                        'y_coordinate' => $square->y_coordinate,
+                    ];
+                })->values()->toArray();
+
+                // Get first square's numbers for example
+                $exampleX = $squaresData[0]['x_number'] ?? 0;
+                $exampleY = $squaresData[0]['y_number'] ?? 0;
+
+                $emailData = [
+                    'pool_name' => $pool->pool_name,
+                    'admin_username' => $adminUsername,
+                    'player_name' => $player->name ?? $player->username ?? 'Player',
+                    'player_email' => $player->email,
+                    'home_team' => $homeTeamName,
+                    'visitor_team' => $visitorTeamName,
+                    'squares_count' => count($squaresData),
+                    'player_squares' => $squaresData,
+                    'total_squares_filled' => $totalSquaresFilled,
+                    'pool_url' => $poolUrl,
+                    'example_x' => $exampleX,
+                    'example_y' => $exampleY,
+                    'logo_url' => env('APP_FRONTEND_URL', env('APP_URL')) . '/img/v2_logo.png',
+                ];
+
+                // Send email
+                Mail::to($player->email)->send(new PoolClosedMail($emailData));
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail the main operation
+            \Log::error('Failed to send pool closed emails: ' . $e->getMessage(), [
+                'pool_id' => $pool->id,
+                'error' => $e->getTraceAsString()
+            ]);
+        }
     }
 }
