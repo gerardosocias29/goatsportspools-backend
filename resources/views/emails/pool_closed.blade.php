@@ -33,7 +33,11 @@
                     <tr>
                         <td align="center" style="padding: 32px 40px 16px 40px;">
                             <h2 style="margin: 0 0 8px 0; font-size: 26px; font-weight: 700; color: #101826;">Pool Closed!</h2>
+                            @if(isset($data['numbers_assigned']) && $data['numbers_assigned'])
                             <p style="margin: 0; font-size: 16px; color: #666666;">Numbers have been assigned - Good luck!</p>
+                            @else
+                            <p style="margin: 0; font-size: 16px; color: #666666;">No more squares can be selected</p>
+                            @endif
                         </td>
                     </tr>
 
@@ -53,9 +57,15 @@
                                         <p style="margin: 0 0 12px 0; font-size: 15px; color: #FFFFFF; line-height: 1.6;">
                                             The square pool <strong style="color: #FFD5B3;">"{{ $data['pool_name'] }}"</strong> has been closed by pool manager <strong style="color: #FFD5B3;">"{{ $data['admin_username'] }}"</strong>.
                                         </p>
+                                        @if(isset($data['numbers_assigned']) && $data['numbers_assigned'])
                                         <p style="margin: 0; font-size: 15px; color: #CCCCCC; line-height: 1.6;">
                                             Random numbers have been generated and no more squares can be picked.
                                         </p>
+                                        @else
+                                        <p style="margin: 0; font-size: 15px; color: #CCCCCC; line-height: 1.6;">
+                                            No more squares can be picked. Numbers will be assigned before the game starts.
+                                        </p>
+                                        @endif
                                     </td>
                                 </tr>
                             </table>
@@ -127,6 +137,7 @@
                                         </p>
 
                                         <!-- Example Box -->
+                                        @if(isset($data['numbers_assigned']) && $data['numbers_assigned'])
                                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #FFFFFF; border: 1px solid #E5E0DB; border-radius: 8px;">
                                             <tr>
                                                 <td style="padding: 14px 16px;">
@@ -136,6 +147,17 @@
                                                 </td>
                                             </tr>
                                         </table>
+                                        @else
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #FFFFFF; border: 1px solid #E5E0DB; border-radius: 8px;">
+                                            <tr>
+                                                <td style="padding: 14px 16px;">
+                                                    <p style="margin: 0; font-size: 14px; color: #333333; line-height: 1.6;">
+                                                        <strong style="color: #D47A3E;">Example:</strong> If your assigned numbers are <strong style="color: #101826;">(3, 7)</strong>, you would win if the score was <strong style="color: #101826;">13-27</strong>
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        @endif
 
                                         <p style="margin: 16px 0 0 0; font-size: 13px; color: #777777; font-style: italic;">
                                             Check with your pool manager about specific rules for your pool.
