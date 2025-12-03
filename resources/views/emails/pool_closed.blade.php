@@ -87,8 +87,9 @@
 
                                         <!-- Number Pairs -->
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                                            @foreach(array_chunk($data['player_squares'], 5) as $row)
                                             <tr>
-                                                @foreach($data['player_squares'] as $square)
+                                                @foreach($row as $square)
                                                 <td style="padding: 4px;">
                                                     <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                                                         <tr>
@@ -100,6 +101,7 @@
                                                 </td>
                                                 @endforeach
                                             </tr>
+                                            @endforeach
                                         </table>
                                     </td>
                                 </tr>
