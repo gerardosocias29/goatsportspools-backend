@@ -24,7 +24,7 @@
                     <!-- Header -->
                     <tr>
                         <td align="center" style="padding: 40px 40px 24px 40px; border-bottom: 1px solid #E5E0DB;">
-                            <img src="{{ $data['logo_url'] ?? 'https://okrng.com/img/v2_logo.png' }}" alt="OKRNG" width="60" style="display: block; margin-bottom: 16px;">
+                            <img src="{{ $data['logo_url'] ?? 'https://test.goatsportspools.com/img/v2_logo.png' }}" alt="OKRNG" width="60" style="display: block; margin-bottom: 16px;">
                             <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #101826; letter-spacing: -0.5px;">OKRNG</h1>
                         </td>
                     </tr>
@@ -93,8 +93,8 @@
                                                 <td style="padding: 4px;">
                                                     <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                                                         <tr>
-                                                            <td style="background-color: #D47A3E; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 16px;">
-                                                                ({{ $square['x_number'] }}, {{ $square['y_number'] }})
+                                                            <td style="background-color: #D47A3E; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 16px; white-space: nowrap;">
+                                                                ({{ $square['x_number'] }},&nbsp;{{ $square['y_number'] }})
                                                             </td>
                                                         </tr>
                                                     </table>
@@ -193,7 +193,7 @@
                     <!-- Footer -->
                     <tr>
                         <td align="center" style="padding: 24px 40px; border-top: 1px solid #E5E0DB; background-color: #FAFAFA; border-radius: 0 0 16px 16px;">
-                            <img src="{{ $data['logo_url'] ?? 'https://okrng.com/img/v2_logo.png' }}" alt="OKRNG" width="32" style="display: block; margin: 0 auto 12px auto; opacity: 0.6;">
+                            <img src="{{ $data['logo_url'] ?? 'https://test.goatsportspools.com/img/v2_logo.png' }}" alt="OKRNG" width="32" style="display: block; margin: 0 auto 12px auto; opacity: 0.6;">
                             <p style="margin: 0 0 4px 0; font-size: 13px; color: #888888;">This email was sent from OKRNG Squares Pool</p>
                             <p style="margin: 0; font-size: 13px; color: #888888;">&copy; {{ date('Y') }} OKRNG. All rights reserved.</p>
                         </td>
