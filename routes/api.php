@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -92,8 +92,11 @@ Route::group(['middleware' => 'auth:api'], function () {
     });
 
     Route::group(['prefix' => 'teams'], function () {
-        Route::get('/', [TeamController::class, 'index']);
-        Route::get('/all', [TeamController::class, 'teams']);
+        Route::get('/', [TeamController::class, 'index']); // Get all teams (supports ?league=NFL filter)
+        Route::get('/all', [TeamController::class, 'teams']); // Get teams with standings
+        Route::post('/', [TeamController::class, 'store']); // Create team (admin only)
+        Route::post('/{id}', [TeamController::class, 'update']); // Update team (admin only)
+        Route::delete('/{id}', [TeamController::class, 'destroy']); // Delete team (superadmin only)
     });
 
     Route::group(['prefix' => 'ncaa_teams'], function () {
@@ -136,10 +139,15 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     // Squares Pools Routes (Authenticated)
     Route::group(['prefix' => 'squares-pools'], function () {
-        // Admin routes (pool management)
+        // Static routes MUST come before dynamic {id} routes
         Route::get('/', [SquaresPoolController::class, 'index']); // Get all pools
-        Route::get('/{id}', [SquaresPoolController::class, 'show']); // Get single pool
         Route::post('/', [SquaresPoolController::class, 'store']); // Create pool
+        Route::post('/join', [SquaresPlayerController::class, 'joinPool']); // Join pool with number + password
+        Route::get('/my-joined', [SquaresPlayerController::class, 'getMyJoinedPools']); // Get my joined pools
+
+        // Dynamic routes with {id} parameter
+        Route::get('/{id}', [SquaresPoolController::class, 'show']); // Get single pool
+        Route::post('/{id}/assign-numbers', [SquaresPoolController::class, 'assignNumbersRandom']); // Random number assignment (admin trigger)
         Route::post('/{id}/assign-numbers-manual', [SquaresPoolController::class, 'assignNumbersManual']); // Manual number assignment
         Route::post('/{id}/close', [SquaresPoolController::class, 'closePool']); // Close pool
         Route::post('/{id}/reopen', [SquaresPoolController::class, 'reopenPool']); // Reopen pool
@@ -152,9 +160,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/{id}/winners', [SquaresPoolController::class, 'getWinners']); // Get winners
         Route::get('/{id}/players', [SquaresPoolController::class, 'getPlayers']); // Get joined players for a pool
 
-        // Player routes (joining and playing)
-        Route::post('/join', [SquaresPlayerController::class, 'joinPool']); // Join pool with number + password
-        Route::get('/my-joined', [SquaresPlayerController::class, 'getMyJoinedPools']); // Get my joined pools
+        // Player routes with {poolId} parameter
         Route::get('/{poolId}/squares', [SquaresPlayerController::class, 'getSquares']); // Get all squares
         Route::get('/{poolId}/my-squares', [SquaresPlayerController::class, 'getMySquares']); // Get my squares
         Route::post('/{poolId}/claim-square', [SquaresPlayerController::class, 'claimSquare']); // Claim a square
@@ -177,6 +183,14 @@ Route::group(['middleware' => 'auth:api'], function () {
 
         // Get my own requests
         Route::get('/my-requests', [CreditRequestController::class, 'getMyRequests']); // Get my credit requests
+    });
+
+    // Squares Admin Applications Routes
+    Route::group(['prefix' => 'squares-admin-applications'], function () {
+        Route::get('/my-status', [SquaresAdminApplicationController::class, 'myStatus']); // Get current user's application status
+        Route::post('/', [SquaresAdminApplicationController::class, 'store']); // Submit new application
+        Route::get('/', [SquaresAdminApplicationController::class, 'index']); // List all applications (Superadmin only)
+        Route::patch('/{id}', [SquaresAdminApplicationController::class, 'update']); // Update application status (Superadmin only)
     });
 });
 

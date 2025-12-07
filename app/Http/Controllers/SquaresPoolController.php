@@ -197,6 +197,22 @@ class SquaresPoolController extends Controller
             $qrCodeService = new QRCodeService();
             $qrCodeUrl = $qrCodeService->generatePoolQRCode($poolNumber, $request->pool_name);
 
+            // Determine numbers_type from request or derive from pool_type
+            $numbersType = $request->numbers_type;
+            if (!$numbersType) {
+                // Fallback: derive from pool_type if not explicitly provided
+                switch ($request->pool_type) {
+                    case 'A':
+                        $numbersType = 'Ascending';
+                        break;
+                    case 'B':
+                        $numbersType = 'TimeSet';
+                        break;
+                    default:
+                        $numbersType = 'AdminTrigger';
+                }
+            }
+
             // Create pool
             $pool = SquaresPool::create([
                 'admin_id' => auth()->id(),
@@ -206,6 +222,7 @@ class SquaresPoolController extends Controller
                 'pool_name' => $request->pool_name,
                 'pool_description' => $request->pool_description,
                 'pool_type' => $request->pool_type,
+                'numbers_type' => $numbersType,
                 'player_pool_type' => $request->player_pool_type,
                 'reward_type' => $request->reward_type ?? 'CreditsRewards',
                 'grid_fee_type' => $gridFeeType,
@@ -278,8 +295,12 @@ class SquaresPoolController extends Controller
     {
         $pool = SquaresPool::findOrFail($poolId);
 
-        // Check authorization
-        if ($pool->admin_id !== auth()->id()) {
+        // Check authorization - pool admin or superadmin (role_id 1 or 2)
+        $user = auth()->user();
+        $isPoolAdmin = $pool->admin_id === $user->id;
+        $isSuperAdmin = in_array($user->role_id, [1, 2]);
+
+        if (!$isPoolAdmin && !$isSuperAdmin) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized'
@@ -357,6 +378,15 @@ class SquaresPoolController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Random number assignment endpoint (for AdminTrigger or fallback)
+     * POST /api/squares-pools/{id}/assign-numbers
+     */
+    public function assignNumbersRandom($id)
+    {
+        return $this->assignNumbers($id, 'random');
     }
 
     /**

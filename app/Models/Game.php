@@ -11,9 +11,10 @@ class Game extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'game_datetime', 'time_zone', 'league_id', 
-        'home_team_id', 'visitor_team_id', 'location', 
-        'city', 'state', 'home_team_score', 'visitor_team_score'
+        'game_datetime', 'time_zone', 'league_id', 'league',
+        'home_team_id', 'visitor_team_id', 'location',
+        'city', 'state', 'home_team_score', 'visitor_team_score',
+        'external_game_id', 'game_nickname', 'game_date_description'
     ];
 
     public function league()

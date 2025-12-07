@@ -389,7 +389,8 @@ class GameController extends Controller
         $game = new Game();
         $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime)->toDateTimeString();
         $game->time_zone = 1;
-        $game->league_id = 1; 
+        $game->league_id = 1;
+        $game->league = $request->league ?? 'NFL'; // Store league type (NFL, NBA, PBA)
 
         $game->home_team_id = $home_team;
         $game->visitor_team_id = $home_team == $favored_team ? $underdog_team : $favored_team;
@@ -432,6 +433,7 @@ class GameController extends Controller
 
         $game = Game::where('id', $id)->first();
         $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime)->toDateTimeString();
+        $game->league = $request->league ?? $game->league ?? 'NFL'; // Update league type
         $game->home_team_id = $home_team;
         $game->visitor_team_id = $home_team == $favored_team ? $underdog_team : $favored_team;
         $game->location = '';

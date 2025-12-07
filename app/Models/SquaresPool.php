@@ -18,6 +18,7 @@ class SquaresPool extends Model
         'password',
         'pool_name',
         'pool_type',
+        'numbers_type', // AdminTrigger, TimeSet, Ascending
         'player_pool_type',
         'home_team_id',
         'visitor_team_id',
