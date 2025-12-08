@@ -73,11 +73,20 @@ class SquaresPoolController extends Controller
 
         $pools = $query->orderBy('created_at', 'desc')->get();
 
+        // Get current user ID for checking if joined
+        $currentUserId = auth()->id();
+
         // Append computed attributes
-        $pools->each(function($pool) {
+        $pools->each(function($pool) use ($currentUserId) {
             $pool->total_pot = $pool->total_pot;
             $pool->claimed_squares = $pool->claimed_squares_count;
             $pool->available_squares = $pool->available_squares_count;
+            $pool->players_count = SquaresPoolPlayer::where('pool_id', $pool->id)->count();
+            // Check if current user has joined this pool
+            $pool->user_joined = $currentUserId ?
+                SquaresPoolPlayer::where('pool_id', $pool->id)
+                    ->where('player_id', $currentUserId)
+                    ->exists() : false;
         });
 
         return response()->json($pools);
@@ -263,10 +272,18 @@ class SquaresPoolController extends Controller
             }
             SquaresPoolSquare::insert($squares);
 
-            // For Type A, assign numbers immediately
-            if ($request->pool_type === 'A') {
-                $this->assignNumbers($pool->id, 'random');
+            // For Type A (In Order/Ascending), assign numbers immediately in order 0-9
+            if ($request->pool_type === 'A' || $numbersType === 'Ascending') {
+                $this->assignNumbers($pool->id, 'ascending');
             }
+
+            // Add pool creator as a player with initial credits
+            SquaresPoolPlayer::create([
+                'pool_id' => $pool->id,
+                'player_id' => auth()->id(),
+                'credits_available' => $request->initial_credits ?? 0,
+                'squares_count' => 0,
+            ]);
 
             DB::commit();
 
@@ -317,7 +334,11 @@ class SquaresPoolController extends Controller
 
         DB::beginTransaction();
         try {
-            if ($mode === 'random') {
+            if ($mode === 'ascending') {
+                // Assign numbers in order 0-9
+                $xNumbers = range(0, 9);
+                $yNumbers = range(0, 9);
+            } elseif ($mode === 'random') {
                 // Generate random numbers 0-9
                 $xNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
                 $yNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
