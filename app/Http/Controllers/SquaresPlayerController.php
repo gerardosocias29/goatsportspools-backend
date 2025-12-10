@@ -112,7 +112,7 @@ class SquaresPlayerController extends Controller
             ], 404);
         }
 
-        // Return limited info (don't expose password)
+        // Return limited info (don't expose password, but indicate if one is required)
         return response()->json([
             'status' => true,
             'data' => [
@@ -121,6 +121,7 @@ class SquaresPlayerController extends Controller
                 'pool_name' => $pool->pool_name,
                 'pool_type' => $pool->pool_type,
                 'player_pool_type' => $pool->player_pool_type,
+                'has_password' => !empty($pool->password),
                 'entry_fee' => $pool->entry_fee,
                 'max_squares_per_player' => $pool->max_squares_per_player,
                 'credit_cost' => $pool->credit_cost,

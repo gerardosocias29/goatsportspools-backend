@@ -128,6 +128,9 @@ class SquaresPoolController extends Controller
 
         $pool->user_joined = $userJoined;
 
+        // Add has_password flag before hiding password (so frontend knows if password is required)
+        $pool->has_password = !empty($pool->password);
+
         // Hide password from non-admins
         $currentUserRoleId = auth()->user()->role_id ?? null;
         $isPoolAdmin = $pool->admin_id === $currentUserId || $pool->created_by === $currentUserId;
@@ -151,6 +154,10 @@ class SquaresPoolController extends Controller
         $accessType = $request->input('access_type', $request->input('costType', ''));
         $passwordRequired = ($accessType === 'PasswordOpen' || !empty($request->password));
 
+        // Determine if datetime fields are required based on numbers_type
+        $numbersType = $request->input('numbers_type', '');
+        $requiresScheduledTime = $numbersType === 'TimeSet';
+
         $validator = Validator::make($request->all(), [
             'game_id' => 'required|exists:games,id',
             'pool_name' => 'required|string|max:255',
@@ -163,8 +170,8 @@ class SquaresPoolController extends Controller
             'max_squares_per_player' => 'nullable|integer|min:1|max:100',
             'credit_cost' => 'required_if:player_pool_type,CREDIT|nullable|integer|min:0|max:1000',
             'initial_credits' => 'nullable|integer|min:0',
-            'close_datetime' => 'required_if:pool_type,B,C|nullable|date',
-            'number_assign_datetime' => 'required_if:pool_type,B|nullable|date',
+            'close_datetime' => 'nullable|date',
+            'number_assign_datetime' => $requiresScheduledTime ? 'required|date' : 'nullable|date',
             'reward1_percent' => 'required|numeric|min:0|max:100',
             'reward2_percent' => 'required|numeric|min:0|max:100',
             'reward3_percent' => 'required|numeric|min:0|max:100',
@@ -274,7 +281,7 @@ class SquaresPoolController extends Controller
 
             // For Type A (In Order/Ascending), assign numbers immediately in order 0-9
             if ($request->pool_type === 'A' || $numbersType === 'Ascending') {
-                $this->assignNumbers($pool->id, 'ascending');
+                $this->assignNumbers($pool->id, 'ascending', null, null, true);
             }
 
             // Add pool creator as a player with initial credits
@@ -308,31 +315,42 @@ class SquaresPoolController extends Controller
      * Assign numbers to pool (Type A immediate, Type B auto, Type C manual)
      * POST /api/squares-pools/{id}/assign-numbers
      */
-    public function assignNumbers($poolId, $mode = 'random', $xNumbers = null, $yNumbers = null)
+    public function assignNumbers($poolId, $mode = 'random', $xNumbers = null, $yNumbers = null, $internalCall = false)
     {
         $pool = SquaresPool::findOrFail($poolId);
 
-        // Check authorization - pool admin or superadmin (role_id 1 or 2)
-        $user = auth()->user();
-        $isPoolAdmin = $pool->admin_id === $user->id;
-        $isSuperAdmin = in_array($user->role_id, [1, 2]);
+        // Skip authorization check for internal calls (e.g., during pool creation)
+        if (!$internalCall) {
+            // Check authorization - pool admin or superadmin (role_id 1 or 2)
+            $user = auth()->user();
+            $isPoolAdmin = $pool->admin_id === $user->id;
+            $isSuperAdmin = in_array($user->role_id, [1, 2]);
 
-        if (!$isPoolAdmin && !$isSuperAdmin) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized'
-            ], 403);
+            if (!$isPoolAdmin && !$isSuperAdmin) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
         }
 
         // Check if already assigned
         if ($pool->numbers_assigned) {
+            if ($internalCall) {
+                return true; // Already assigned, skip silently for internal calls
+            }
             return response()->json([
                 'status' => false,
                 'message' => 'Numbers already assigned'
             ], 400);
         }
 
-        DB::beginTransaction();
+        // Use existing transaction if internal call, otherwise start new one
+        $useTransaction = !$internalCall;
+        if ($useTransaction) {
+            DB::beginTransaction();
+        }
+
         try {
             if ($mode === 'ascending') {
                 // Assign numbers in order 0-9
@@ -377,10 +395,18 @@ class SquaresPoolController extends Controller
                 ]);
             }
 
-            DB::commit();
+            if ($useTransaction) {
+                DB::commit();
+            }
 
-            // Send pool closed emails to all players
-            $this->sendPoolClosedEmails($pool, $xNumbers, $yNumbers);
+            // Send pool closed emails to all players (skip for internal calls during creation)
+            if (!$internalCall) {
+                $this->sendPoolClosedEmails($pool, $xNumbers, $yNumbers);
+            }
+
+            if ($internalCall) {
+                return true; // Success for internal calls
+            }
 
             return response()->json([
                 'status' => true,
@@ -392,7 +418,12 @@ class SquaresPoolController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            if ($useTransaction) {
+                DB::rollBack();
+            }
+            if ($internalCall) {
+                throw $e; // Re-throw for internal calls so parent transaction can handle it
+            }
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to assign numbers',
@@ -408,6 +439,15 @@ class SquaresPoolController extends Controller
     public function assignNumbersRandom($id)
     {
         return $this->assignNumbers($id, 'random');
+    }
+
+    /**
+     * Ascending number assignment endpoint (0-9 in order)
+     * POST /api/squares-pools/{id}/assign-numbers-ascending
+     */
+    public function assignNumbersAscending($id)
+    {
+        return $this->assignNumbers($id, 'ascending');
     }
 
     /**

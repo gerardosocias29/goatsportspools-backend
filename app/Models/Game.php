@@ -14,7 +14,10 @@ class Game extends Model
         'game_datetime', 'time_zone', 'league_id', 'league',
         'home_team_id', 'visitor_team_id', 'location',
         'city', 'state', 'home_team_score', 'visitor_team_score',
-        'external_game_id', 'game_nickname', 'game_date_description'
+        'external_game_id', 'game_nickname', 'game_date_description',
+        'game_description', 'game_status',
+        'home_q1_score', 'home_q2_score', 'home_q3_score', 'home_q4_score',
+        'visitor_q1_score', 'visitor_q2_score', 'visitor_q3_score', 'visitor_q4_score'
     ];
 
     public function league()

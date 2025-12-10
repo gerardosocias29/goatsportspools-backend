@@ -44,8 +44,8 @@ class WinnerCalculationService
         $homeLastDigit = $homeScore % 10;
         $visitorLastDigit = $visitorScore % 10;
 
-        // Find which square wins
-        $winningSquare = $this->findWinningSquare($pool, $homeLastDigit, $visitorLastDigit);
+        // Find which square wins (using winning/losing team logic)
+        $winningSquare = $this->findWinningSquare($pool, $homeLastDigit, $visitorLastDigit, $homeScore, $visitorScore);
 
         if (!$winningSquare) {
             throw new \Exception('No winning square found');
@@ -140,17 +140,31 @@ class WinnerCalculationService
 
     /**
      * Find the winning square based on last digits
+     * X-axis = Winning team score (last digit)
+     * Y-axis = Losing team score (last digit)
      */
-    protected function findWinningSquare(SquaresPool $pool, int $homeLastDigit, int $visitorLastDigit)
+    protected function findWinningSquare(SquaresPool $pool, int $homeLastDigit, int $visitorLastDigit, int $homeScore, int $visitorScore)
     {
         $xNumbers = $pool->x_numbers;
         $yNumbers = $pool->y_numbers;
 
-        // Find X coordinate where x_number matches home last digit
-        $xCoordinate = array_search($homeLastDigit, $xNumbers);
+        // Determine winning and losing team scores
+        // X-axis = winning team, Y-axis = losing team
+        if ($homeScore >= $visitorScore) {
+            // Home team winning (or tie - home team on X-axis)
+            $winningLastDigit = $homeLastDigit;
+            $losingLastDigit = $visitorLastDigit;
+        } else {
+            // Visitor team winning
+            $winningLastDigit = $visitorLastDigit;
+            $losingLastDigit = $homeLastDigit;
+        }
 
-        // Find Y coordinate where y_number matches visitor last digit
-        $yCoordinate = array_search($visitorLastDigit, $yNumbers);
+        // Find X coordinate where x_number matches winning team last digit
+        $xCoordinate = array_search($winningLastDigit, $xNumbers);
+
+        // Find Y coordinate where y_number matches losing team last digit
+        $yCoordinate = array_search($losingLastDigit, $yNumbers);
 
         if ($xCoordinate === false || $yCoordinate === false) {
             return null;

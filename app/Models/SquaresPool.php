@@ -121,6 +121,14 @@ class SquaresPool extends Model
     }
 
     /**
+     * Get the game reward type for this pool
+     */
+    public function gameRewardType()
+    {
+        return $this->belongsTo(GameRewardType::class, 'game_reward_type_id');
+    }
+
+    /**
      * Get total pot for this pool
      */
     public function getTotalPotAttribute()

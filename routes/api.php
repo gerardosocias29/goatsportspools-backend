@@ -148,6 +148,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         // Dynamic routes with {id} parameter
         Route::get('/{id}', [SquaresPoolController::class, 'show']); // Get single pool
         Route::post('/{id}/assign-numbers', [SquaresPoolController::class, 'assignNumbersRandom']); // Random number assignment (admin trigger)
+        Route::post('/{id}/assign-numbers-ascending', [SquaresPoolController::class, 'assignNumbersAscending']); // Ascending number assignment (0-9 in order)
         Route::post('/{id}/assign-numbers-manual', [SquaresPoolController::class, 'assignNumbersManual']); // Manual number assignment
         Route::post('/{id}/close', [SquaresPoolController::class, 'closePool']); // Close pool
         Route::post('/{id}/reopen', [SquaresPoolController::class, 'reopenPool']); // Reopen pool
