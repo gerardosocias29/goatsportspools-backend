@@ -167,6 +167,7 @@ class SquaresPoolController extends Controller
             'home_team_id' => 'required|exists:teams,id',
             'visitor_team_id' => 'required|exists:teams,id',
             'entry_fee' => 'required|numeric|min:0',
+                'custom_payout' => 'nullable|numeric|min:0',
             'max_squares_per_player' => 'nullable|integer|min:1|max:100',
             'credit_cost' => 'required_if:player_pool_type,CREDIT|nullable|integer|min:0|max:1000',
             'initial_credits' => 'nullable|integer|min:0',
@@ -246,6 +247,7 @@ class SquaresPoolController extends Controller
                 'home_team_id' => $request->home_team_id,
                 'visitor_team_id' => $request->visitor_team_id,
                 'entry_fee' => $request->entry_fee,
+                'custom_payout' => $request->custom_payout,
                 'max_squares_per_player' => $request->max_squares_per_player,
                 'credit_cost' => $request->credit_cost,
                 'initial_credits' => $request->initial_credits ?? 0,
@@ -888,3 +890,5 @@ class SquaresPoolController extends Controller
         }
     }
 }
+
+

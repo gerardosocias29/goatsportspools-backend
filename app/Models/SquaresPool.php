@@ -26,6 +26,7 @@ class SquaresPool extends Model
         'y_numbers',
         'numbers_assigned',
         'entry_fee',
+        'custom_payout',
         'max_squares_per_player',
         'credit_cost',
         'initial_credits',
@@ -44,6 +45,7 @@ class SquaresPool extends Model
         'y_numbers' => 'array',
         'numbers_assigned' => 'boolean',
         'entry_fee' => 'decimal:2',
+        'custom_payout' => 'decimal:2',
         'reward1_percent' => 'decimal:2',
         'reward2_percent' => 'decimal:2',
         'reward3_percent' => 'decimal:2',
@@ -60,7 +62,6 @@ class SquaresPool extends Model
         do {
             $poolNumber = strtoupper(Str::random(6));
         } while (self::where('pool_number', $poolNumber)->exists());
-
         return $poolNumber;
     }
 
@@ -130,9 +131,16 @@ class SquaresPool extends Model
 
     /**
      * Get total pot for this pool
+     * Uses custom_payout if set, otherwise calculates from entry_fee * claimed squares
      */
     public function getTotalPotAttribute()
     {
+        // Use custom payout if set
+        if ($this->custom_payout !== null) {
+            return $this->custom_payout;
+        }
+        
+        // Otherwise calculate from entry fee
         $claimedSquares = $this->squares()->whereNotNull('player_id')->count();
         return $this->entry_fee * $claimedSquares;
     }
