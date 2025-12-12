@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Http\Controllers;
 
@@ -387,9 +387,7 @@ class GameController extends Controller
         $underdog_team = $request->underdog_team['id'];
 
         $game = new Game();
-        // Parse as local timezone (Asia/Singapore) then convert to UTC for storage
-        $clientTimezone = $request->timezone ?? 'UTC'; // Use client timezone or UTC
-        $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime, $clientTimezone)->setTimezone('UTC')->toDateTimeString();
+        $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime)->toDateTimeString();
         $game->time_zone = 1;
         $game->league_id = 1;
         $game->league = $request->league ?? 'NFL'; // Store league type (NFL, NBA, PBA)
@@ -434,9 +432,7 @@ class GameController extends Controller
         $underdog_team = $request->underdog_team['id'];
 
         $game = Game::where('id', $id)->first();
-        // Parse as local timezone (Asia/Singapore) then convert to UTC for storage
-        $clientTimezone = $request->timezone ?? 'UTC'; // Use client timezone or UTC
-        $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime, $clientTimezone)->setTimezone('UTC')->toDateTimeString();
+        $game->game_datetime = \Carbon\Carbon::parse($request->game_datetime)->toDateTimeString();
         $game->league = $request->league ?? $game->league ?? 'NFL'; // Update league type
         $game->home_team_id = $home_team;
         $game->visitor_team_id = $home_team == $favored_team ? $underdog_team : $favored_team;
