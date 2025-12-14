@@ -8,7 +8,7 @@ use Illuminate\Queue\SerializesModels;
 
 class PoolClosedMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use SerializesModels;
 
     public $data;
 
@@ -34,3 +34,4 @@ class PoolClosedMail extends Mailable
                     ->with('data', $this->data);
     }
 }
+
