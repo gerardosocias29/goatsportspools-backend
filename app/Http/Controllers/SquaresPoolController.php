@@ -593,8 +593,12 @@ class SquaresPoolController extends Controller
 
         $pool = SquaresPool::findOrFail($id);
 
-        // Check authorization
-        if ($pool->admin_id !== auth()->id()) {
+        // Check authorization - pool admin or superadmin (role_id 1)
+        $user = auth()->user();
+        $isSuperAdmin = $user->role_id == 1;
+        $isPoolAdmin = $pool->admin_id == $user->id;
+        
+        if (!$isSuperAdmin && !$isPoolAdmin) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized'
@@ -623,8 +627,12 @@ class SquaresPoolController extends Controller
     {
         $pool = SquaresPool::findOrFail($id);
 
-        // Check authorization
-        if ($pool->admin_id !== auth()->id()) {
+        // Check authorization - pool admin or superadmin (role_id 1)
+        $user = auth()->user();
+        $isSuperAdmin = $user->role_id == 1;
+        $isPoolAdmin = $pool->admin_id == $user->id;
+        
+        if (!$isSuperAdmin && !$isPoolAdmin) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized'
