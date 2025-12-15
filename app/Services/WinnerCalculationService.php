@@ -52,15 +52,9 @@ class WinnerCalculationService
         }
 
         if (!$winningSquare->player_id) {
-            throw new \Exception('Winning square is not claimed by any player');
-        }
-
-        // Calculate prize amount
-        $prizeAmount = $this->calculatePrizeAmount($pool, $quarter);
-
-        DB::beginTransaction();
-        try {
-            // Check if winner already exists for this quarter
+            $homeTeam = $game->home_team->name ?? 'Home';
+            $visitorTeam = $game->visitor_team->name ?? 'Visitor';
+            throw new \Exception("Winning square (X:{$homeLastDigit}, Y:{$visitorLastDigit}) for {$homeTeam} {$homeScore} - {$visitorTeam} {$visitorScore} is not claimed by any player. No winner for this quarter.");
             $existingWinner = SquaresPoolWinner::where('pool_id', $poolId)
                 ->where('quarter', $quarter)
                 ->first();
