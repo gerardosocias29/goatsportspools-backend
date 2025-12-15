@@ -54,7 +54,16 @@ class WinnerCalculationService
         if (!$winningSquare->player_id) {
             $homeTeam = $game->home_team->name ?? 'Home';
             $visitorTeam = $game->visitor_team->name ?? 'Visitor';
-            throw new \Exception("Winning square (X:{$homeLastDigit}, Y:{$visitorLastDigit}) for {$homeTeam} {$homeScore} - {$visitorTeam} {$visitorScore} is not claimed by any player. No winner for this quarter.");
+            
+            return [
+                'status' => false,
+                'message' => "Winning square (X:{$homeLastDigit}, Y:{$visitorLastDigit}) for {$homeTeam} {$homeScore} - {$visitorTeam} {$visitorScore} is not claimed by any player. No winner for this quarter.",
+                'winning_numbers' => [
+                    'home' => $homeLastDigit,
+                    'visitor' => $visitorLastDigit,
+                ],
+                'unclaimed' => true,
+            ];
         }
 
         // Calculate prize amount
