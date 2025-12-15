@@ -80,6 +80,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/announce-winner', [GameController::class, 'announceWinner']);
         Route::post('/create', [GameController::class, 'create']);
         Route::post('/update/{id}', [GameController::class, 'update']);
+        Route::put('/{id}/scores', [GameController::class, 'updateScores']);
         Route::get('/recent', [GameController::class, 'getDoneGames']);
         Route::get('/manage', [GameController::class, 'getGames']);
     });

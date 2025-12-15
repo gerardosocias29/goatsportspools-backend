@@ -460,13 +460,60 @@ class GameController extends Controller
 
     public function getDoneGames() {
         $oneMinuteAgo = \Carbon\Carbon::now()->subMinute()->toDateTimeString();
-    
+
         // Get games that have already started (game_datetime is <= one minute ago), regardless of the score
         $games = Game::with(['home_team', 'visitor_team', 'odd', 'odd.favored_team', 'odd.underdog_team'])
             ->where('game_datetime', '>', $oneMinuteAgo)
             ->orderBy('game_datetime', 'DESC')
             ->get();
-    
+
         return response()->json($games);
+    }
+
+    /**
+     * Update game scores
+     * PUT /api/games/{id}/scores
+     */
+    public function updateScores(Request $request, $id) {
+        $user = Auth::user();
+
+        // Only admins (role_id <= 2) can update scores
+        if($user->role_id > 2) {
+            return response()->json([
+                "status" => false,
+                "message" => "You don't have enough permissions to update game scores."
+            ], 403);
+        }
+
+        $game = Game::findOrFail($id);
+
+        // Update scores - using the field names from the Game model
+        $game->fill([
+            'q1_home' => $request->q1_home ?? $game->q1_home,
+            'q1_visitor' => $request->q1_visitor ?? $game->q1_visitor,
+            'half_home' => $request->half_home ?? $game->half_home,
+            'half_visitor' => $request->half_visitor ?? $game->half_visitor,
+            'q3_home' => $request->q3_home ?? $game->q3_home,
+            'q3_visitor' => $request->q3_visitor ?? $game->q3_visitor,
+            'final_home' => $request->final_home ?? $game->final_home,
+            'final_visitor' => $request->final_visitor ?? $game->final_visitor,
+            'game_status' => $request->game_status ?? $game->game_status,
+        ]);
+
+        // Also update home_team_score and visitor_team_score with final scores if provided
+        if ($request->final_home !== null) {
+            $game->home_team_score = $request->final_home;
+        }
+        if ($request->final_visitor !== null) {
+            $game->visitor_team_score = $request->final_visitor;
+        }
+
+        $game->save();
+
+        return response()->json([
+            "status" => true,
+            "message" => "Game scores updated successfully.",
+            "game" => $game
+        ]);
     }
 }

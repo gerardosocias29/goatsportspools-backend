@@ -17,7 +17,12 @@ class Game extends Model
         'external_game_id', 'game_nickname', 'game_date_description',
         'game_description', 'game_status',
         'home_q1_score', 'home_q2_score', 'home_q3_score', 'home_q4_score',
-        'visitor_q1_score', 'visitor_q2_score', 'visitor_q3_score', 'visitor_q4_score'
+        'visitor_q1_score', 'visitor_q2_score', 'visitor_q3_score', 'visitor_q4_score',
+        // Cumulative scores for Squares Pools
+        'q1_home', 'q1_visitor',
+        'half_home', 'half_visitor',
+        'q3_home', 'q3_visitor',
+        'final_home', 'final_visitor'
     ];
 
     public function league()
