@@ -582,6 +582,8 @@ class SquaresPoolController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'quarter' => 'required|integer|min:1|max:4',
+            'home_score' => 'nullable|integer|min:0',
+            'visitor_score' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -606,6 +608,51 @@ class SquaresPoolController extends Controller
         }
 
         try {
+            $game = $pool->game;
+            $quarter = $request->quarter;
+            
+            // Determine which columns to check based on quarter
+            $homeScoreColumn = "home_q{$quarter}_score";
+            $visitorScoreColumn = "visitor_q{$quarter}_score";
+            
+            // Check if scores need to be saved
+            $scoresExist = !is_null($game->$homeScoreColumn) && !is_null($game->$visitorScoreColumn);
+            $scoresProvided = $request->has('home_score') && $request->has('visitor_score');
+            
+            // If scores are provided in request, save them to the game
+            if ($scoresProvided) {
+                // Update game scores based on quarter
+                switch ($quarter) {
+                    case 1:
+                        $game->home_q1_score = $request->home_score;
+                        $game->visitor_q1_score = $request->visitor_score;
+                        break;
+                    case 2:
+                        $game->home_q2_score = $request->home_score;
+                        $game->visitor_q2_score = $request->visitor_score;
+                        break;
+                    case 3:
+                        $game->home_q3_score = $request->home_score;
+                        $game->visitor_q3_score = $request->visitor_score;
+                        break;
+                    case 4:
+                        $game->home_q4_score = $request->home_score;
+                        $game->visitor_q4_score = $request->visitor_score;
+                        // Also update final scores
+                        $game->home_team_score = $request->home_score;
+                        $game->visitor_team_score = $request->visitor_score;
+                        break;
+                }
+                
+                $game->save();
+            } elseif (!$scoresExist) {
+                // No scores in DB and none provided in request
+                return response()->json([
+                    'status' => false,
+                    'message' => "Scores for quarter {$quarter} are not available. Please update game scores first."
+                ], 400);
+            }
+
             $winnerService = new WinnerCalculationService();
             $result = $winnerService->calculateWinners($id, $request->quarter);
 
