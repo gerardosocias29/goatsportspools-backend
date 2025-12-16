@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\SquaresAdminApplication;
 use App\Models\User;
+use App\Mail\CommissionerApplicationMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class SquaresAdminApplicationController extends Controller
 {
@@ -15,7 +17,7 @@ class SquaresAdminApplicationController extends Controller
     public function myStatus()
     {
         $application = SquaresAdminApplication::where('user_id', Auth::id())->first();
-
+        
         if (!$application) {
             return response()->json(['status' => null]);
         }
@@ -42,6 +44,7 @@ class SquaresAdminApplicationController extends Controller
 
         // Check if user already has an application
         $existingApplication = SquaresAdminApplication::where('user_id', Auth::id())->first();
+        
         if ($existingApplication) {
             return response()->json([
                 'message' => 'You already have a pending application.',
@@ -56,6 +59,15 @@ class SquaresAdminApplicationController extends Controller
             'experience' => $request->experience,
             'status' => 'pending',
         ]);
+
+        // Send email notification to admin
+        try {
+            $adminEmail = env('ADMIN_EMAIL', 'admin@goatsportspools.com');
+            Mail::to($adminEmail)->send(new CommissionerApplicationMail($application));
+        } catch (\Exception $e) {
+            // Log error but don't fail the application submission
+            \Log::error('Failed to send commissioner application email: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Application submitted successfully.',
