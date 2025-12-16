@@ -51,10 +51,53 @@ class WinnerCalculationService
             throw new \Exception('No winning square found');
         }
 
+        // Handle unclaimed square - still create a record with null player_id
         if (!$winningSquare->player_id) {
             $homeTeam = $game->home_team->name ?? 'Home';
             $visitorTeam = $game->visitor_team->name ?? 'Visitor';
-            
+
+            // Create/update winner record with null player_id to track calculation
+            DB::beginTransaction();
+            try {
+                $existingWinner = SquaresPoolWinner::where('pool_id', $poolId)
+                    ->where('quarter', $quarter)
+                    ->first();
+
+                if ($existingWinner) {
+                    $existingWinner->update([
+                        'square_id' => $winningSquare->id,
+                        'player_id' => null, // Unclaimed
+                        'prize_amount' => 0,
+                        'home_score' => $homeScore,
+                        'visitor_score' => $visitorScore,
+                        'modify_user_id' => auth()->id(),
+                        'modify_date' => now()->toDateString(),
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    SquaresPoolWinner::create([
+                        'pool_id' => $poolId,
+                        'square_id' => $winningSquare->id,
+                        'player_id' => null, // Unclaimed
+                        'quarter' => $quarter,
+                        'prize_amount' => 0,
+                        'home_score' => $homeScore,
+                        'visitor_score' => $visitorScore,
+                        'winning_coordinates' => json_encode([
+                            'x' => $homeLastDigit,
+                            'y' => $visitorLastDigit,
+                        ]),
+                        'created_user_id' => auth()->id(),
+                        'created_date' => now()->toDateString(),
+                    ]);
+                }
+
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
             return [
                 'status' => false,
                 'message' => "Winning square (X:{$homeLastDigit}, Y:{$visitorLastDigit}) for {$homeTeam} {$homeScore} - {$visitorTeam} {$visitorScore} is not claimed by any player. No winner for this quarter.",
