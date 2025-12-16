@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\SquaresAdminApplication;
 use App\Models\User;
 use App\Mail\CommissionerApplicationMail;
+use App\Mail\CommissionerApplicationApprovedMail;
+use App\Mail\CommissionerApplicationDeniedMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -127,6 +129,20 @@ class SquaresAdminApplicationController extends Controller
         // If approved, update user's role to Square Admin (role_id = 2)
         if ($request->status === 'approved') {
             User::where('id', $application->user_id)->update(['role_id' => 2]);
+            
+            // Send approval email to user
+            try {
+                Mail::to($application->email)->send(new CommissionerApplicationApprovedMail($application));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send approval email: ' . $e->getMessage());
+            }
+        } elseif ($request->status === 'denied') {
+            // Send denial email to user
+            try {
+                Mail::to($application->email)->send(new CommissionerApplicationDeniedMail($application));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send denial email: ' . $e->getMessage());
+            }
         }
 
         return response()->json([
