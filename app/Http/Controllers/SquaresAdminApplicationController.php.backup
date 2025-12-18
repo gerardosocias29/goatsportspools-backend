@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\SquaresAdminApplication;
 use App\Models\User;
 use App\Mail\CommissionerApplicationMail;
-use App\Mail\CommissionerApplicationReceivedMail;
 use App\Mail\CommissionerApplicationApprovedMail;
 use App\Mail\CommissionerApplicationDeniedMail;
 use Illuminate\Http\Request;
@@ -20,7 +19,7 @@ class SquaresAdminApplicationController extends Controller
     public function myStatus()
     {
         $application = SquaresAdminApplication::where('user_id', Auth::id())->first();
-
+        
         if (!$application) {
             return response()->json(['status' => null]);
         }
@@ -47,7 +46,7 @@ class SquaresAdminApplicationController extends Controller
 
         // Check if user already has an application
         $existingApplication = SquaresAdminApplication::where('user_id', Auth::id())->first();
-
+        
         if ($existingApplication) {
             return response()->json([
                 'message' => 'You already have a pending application.',
@@ -63,21 +62,13 @@ class SquaresAdminApplicationController extends Controller
             'status' => 'pending',
         ]);
 
-        // Send confirmation email to applicant
-        try {
-            Mail::to($application->email)->send(new CommissionerApplicationReceivedMail($application));
-            \Log::info("Sent confirmation email to applicant: {$application->email}");
-        } catch (\Exception $e) {
-            \Log::error('Failed to send confirmation email to applicant: ' . $e->getMessage());
-        }
-
-        // Send notification email to admin
+        // Send email notification to admin
         try {
             $adminEmail = env('ADMIN_EMAIL', 'admin@goatsportspools.com');
             Mail::to($adminEmail)->send(new CommissionerApplicationMail($application));
-            \Log::info("Sent notification email to admin: {$adminEmail}");
         } catch (\Exception $e) {
-            \Log::error('Failed to send commissioner application email to admin: ' . $e->getMessage());
+            // Log error but don't fail the application submission
+            \Log::error('Failed to send commissioner application email: ' . $e->getMessage());
         }
 
         return response()->json([
@@ -138,11 +129,10 @@ class SquaresAdminApplicationController extends Controller
         // If approved, update user's role to Square Admin (role_id = 2)
         if ($request->status === 'approved') {
             User::where('id', $application->user_id)->update(['role_id' => 2]);
-
+            
             // Send approval email to user
             try {
                 Mail::to($application->email)->send(new CommissionerApplicationApprovedMail($application));
-                \Log::info("Sent approval email to: {$application->email}");
             } catch (\Exception $e) {
                 \Log::error('Failed to send approval email: ' . $e->getMessage());
             }
@@ -150,7 +140,6 @@ class SquaresAdminApplicationController extends Controller
             // Send denial email to user
             try {
                 Mail::to($application->email)->send(new CommissionerApplicationDeniedMail($application));
-                \Log::info("Sent denial email to: {$application->email}");
             } catch (\Exception $e) {
                 \Log::error('Failed to send denial email: ' . $e->getMessage());
             }
