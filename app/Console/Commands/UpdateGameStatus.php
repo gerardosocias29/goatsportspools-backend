@@ -21,7 +21,7 @@ class UpdateGameStatus extends Command
      *
      * @var string
      */
-    protected $description = 'Update game status to "started" when game datetime is reached';
+    protected $description = 'Update game status to started/ended based on game datetime and scores';
 
     /**
      * Execute the console command.
@@ -29,31 +29,60 @@ class UpdateGameStatus extends Command
     public function handle()
     {
         $now = Carbon::now();
+        $startedCount = 0;
+        $endedCount = 0;
 
-        // Find games that should be started but aren't marked as started yet
-        // Game status: 'scheduled', 'started', 'completed', 'postponed', 'cancelled'
-        $games = Game::where('game_datetime', '<=', $now)
+        // 1. Find games that should be started but aren't marked as started yet
+        $gamesToStart = Game::where('game_datetime', '<=', $now)
             ->whereIn('game_status', ['scheduled', null, ''])
             ->get();
 
-        if ($games->isEmpty()) {
-            $this->info('No games to update.');
-            Log::info('[UpdateGameStatus] No games to update at ' . $now->toDateTimeString());
-            return 0;
-        }
-
-        $count = 0;
-        foreach ($games as $game) {
+        foreach ($gamesToStart as $game) {
             $game->game_status = 'started';
             $game->save();
-            $count++;
+            $startedCount++;
 
             $this->info("Updated game #{$game->id} ({$game->game_nickname}) to 'started' status");
             Log::info("[UpdateGameStatus] Game #{$game->id} ({$game->game_nickname}) status updated to 'started'");
         }
 
-        $this->info("Successfully updated {$count} game(s) to 'started' status.");
-        Log::info("[UpdateGameStatus] Updated {$count} game(s) to 'started' status at " . $now->toDateTimeString());
+        // 2. Find games that have final scores and should be marked as ended
+        // The database has: q1_home, q1_visitor, half_home, half_visitor, q3_home, q3_visitor, final_home, final_visitor
+        $gamesToEnd = Game::whereIn('game_status', ['started', 'scheduled'])
+            ->where(function ($query) {
+                // Check if Final score exists (both home and visitor)
+                $query->where(function ($q) {
+                    $q->whereNotNull('final_home')
+                      ->whereNotNull('final_visitor');
+                })
+                // OR check if all quarters have scores
+                ->orWhere(function ($q) {
+                    $q->whereNotNull('q1_home')
+                      ->whereNotNull('q1_visitor')
+                      ->whereNotNull('half_home')
+                      ->whereNotNull('half_visitor')
+                      ->whereNotNull('q3_home')
+                      ->whereNotNull('q3_visitor');
+                });
+            })
+            ->get();
+
+        foreach ($gamesToEnd as $game) {
+            $game->game_status = 'ended';
+            $game->save();
+            $endedCount++;
+
+            $this->info("Updated game #{$game->id} ({$game->game_nickname}) to 'ended' status");
+            Log::info("[UpdateGameStatus] Game #{$game->id} ({$game->game_nickname}) status updated to 'ended'");
+        }
+
+        if ($startedCount === 0 && $endedCount === 0) {
+            $this->info('No games to update.');
+            Log::info('[UpdateGameStatus] No games to update at ' . $now->toDateTimeString());
+        } else {
+            $this->info("Successfully updated {$startedCount} game(s) to 'started' and {$endedCount} game(s) to 'ended' status.");
+            Log::info("[UpdateGameStatus] Updated {$startedCount} to 'started' and {$endedCount} to 'ended' at " . $now->toDateTimeString());
+        }
 
         return 0;
     }
