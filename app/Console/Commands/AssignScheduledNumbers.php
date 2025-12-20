@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\SquaresPool;
 use App\Models\SquaresPoolSquare;
+use App\Services\PoolEmailService;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +77,17 @@ class AssignScheduledNumbers extends Command
 
                 $this->info("Assigned numbers for pool #{$pool->pool_number} - {$pool->pool_name}");
                 $assignedCount++;
+
+                // Send emails to all players with their assigned numbers
+                $emailService = new PoolEmailService();
+                $emailResult = $emailService->sendNumbersAssignedEmails($pool, $xNumbers, $yNumbers);
+
+                if ($emailResult['sent'] > 0) {
+                    $this->info("  → Sent {$emailResult['sent']} email(s) to players");
+                }
+                if ($emailResult['failed'] > 0) {
+                    $this->warn("  → Failed to send {$emailResult['failed']} email(s)");
+                }
 
             } catch (\Exception $e) {
                 DB::rollBack();

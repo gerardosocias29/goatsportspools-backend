@@ -33,8 +33,13 @@ class UpdateGameStatus extends Command
         $endedCount = 0;
 
         // 1. Find games that should be started but aren't marked as started yet
+        // Check for: 'scheduled', 'not_started', null, or empty string
         $gamesToStart = Game::where('game_datetime', '<=', $now)
-            ->whereIn('game_status', ['scheduled', null, ''])
+            ->where(function ($query) {
+                $query->whereIn('game_status', ['scheduled', 'not_started'])
+                      ->orWhereNull('game_status')
+                      ->orWhere('game_status', '');
+            })
             ->get();
 
         foreach ($gamesToStart as $game) {
