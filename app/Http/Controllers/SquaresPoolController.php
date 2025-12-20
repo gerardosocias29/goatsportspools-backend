@@ -9,6 +9,7 @@ use App\Models\Game;
 use App\Services\WinnerCalculationService;
 use App\Services\QRCodeService;
 use App\Mail\PoolClosedMail;
+use App\Mail\NumbersAssignedMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -319,6 +320,12 @@ class SquaresPoolController extends Controller
      */
     public function assignNumbers($poolId, $mode = 'random', $xNumbers = null, $yNumbers = null, $internalCall = false)
     {
+        \Log::info('assignNumbers called', [
+            'poolId' => $poolId,
+            'mode' => $mode,
+            'internalCall' => $internalCall,
+        ]);
+
         $pool = SquaresPool::findOrFail($poolId);
 
         // Skip authorization check for internal calls (e.g., during pool creation)
@@ -381,11 +388,16 @@ class SquaresPoolController extends Controller
                 }
             }
 
-            // Update pool with numbers
+            // Update pool with numbers (keep pool status unchanged - admin controls when to close)
             $pool->update([
                 'x_numbers' => $xNumbers,
                 'y_numbers' => $yNumbers,
                 'numbers_assigned' => true,
+            ]);
+
+            \Log::info('assignNumbers: Numbers assigned', [
+                'pool_id' => $pool->id,
+                'pool_status' => $pool->pool_status,
             ]);
 
             // Update all squares with their assigned numbers
@@ -401,9 +413,9 @@ class SquaresPoolController extends Controller
                 DB::commit();
             }
 
-            // Send pool closed emails to all players (skip for internal calls during creation)
+            // Send numbers assigned emails to all players (skip for internal calls during creation)
             if (!$internalCall) {
-                $this->sendPoolClosedEmails($pool, $xNumbers, $yNumbers);
+                $this->sendNumbersAssignedEmails($pool, $xNumbers, $yNumbers);
             }
 
             if ($internalCall) {
@@ -873,17 +885,30 @@ class SquaresPoolController extends Controller
     }
 
     /**
-     * Send pool closed notification emails to all players (when numbers are assigned)
+     * Send numbers assigned notification emails to all players
      *
      * @param SquaresPool $pool
      * @param array $xNumbers
      * @param array $yNumbers
      */
-    private function sendPoolClosedEmails(SquaresPool $pool, array $xNumbers, array $yNumbers)
+    private function sendNumbersAssignedEmails(SquaresPool $pool, array $xNumbers, array $yNumbers)
     {
         try {
-            // Load pool with related data
-            $pool->load(['admin', 'homeTeam', 'visitorTeam', 'squares', 'players.player']);
+            // Load pool with related data (squares.player to get player info for each square)
+            $pool->load(['admin', 'homeTeam', 'visitorTeam', 'squares.player']);
+
+            $claimedSquaresCount = $pool->squares->whereNotNull('player_id')->count();
+
+            \Log::info('sendNumbersAssignedEmails: Starting for pool #' . $pool->id, [
+                'pool_name' => $pool->pool_name,
+                'squares_count' => $pool->squares->count(),
+                'claimed_squares' => $claimedSquaresCount,
+            ]);
+
+            if ($claimedSquaresCount === 0) {
+                \Log::info('sendNumbersAssignedEmails: No claimed squares - no emails to send');
+                return;
+            }
 
             $homeTeamName = $pool->homeTeam->name ?? 'Home Team';
             $visitorTeamName = $pool->visitorTeam->name ?? 'Visitor Team';
@@ -930,15 +955,25 @@ class SquaresPoolController extends Controller
                     'pool_url' => $poolUrl,
                     'example_x' => $exampleX,
                     'example_y' => $exampleY,
+                    'numbers_assigned' => true,
+                    'x_numbers' => $xNumbers, // Full X axis numbers for grid display
+                    'y_numbers' => $yNumbers, // Full Y axis numbers for grid display
                     'logo_url' => env('APP_FRONTEND_URL', env('APP_URL')) . '/img/v2_logo.png',
                 ];
 
-                // Send email
-                Mail::to($player->email)->send(new PoolClosedMail($emailData));
+                // Send email using NumbersAssignedMail (since numbers are assigned)
+                Mail::to($player->email)->send(new NumbersAssignedMail($emailData));
+
+                \Log::info('sendNumbersAssignedEmails: Sent email to ' . $player->email, [
+                    'player_name' => $player->name,
+                    'squares_count' => count($squaresData),
+                ]);
             }
+
+            \Log::info('sendNumbersAssignedEmails: Completed for pool #' . $pool->id);
         } catch (\Exception $e) {
             // Log error but don't fail the main operation
-            \Log::error('Failed to send pool closed emails: ' . $e->getMessage(), [
+            \Log::error('Failed to send numbers assigned emails: ' . $e->getMessage(), [
                 'pool_id' => $pool->id,
                 'error' => $e->getTraceAsString()
             ]);

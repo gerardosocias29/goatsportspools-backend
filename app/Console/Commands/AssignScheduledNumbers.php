@@ -53,7 +53,7 @@ class AssignScheduledNumbers extends Command
                 $xNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
                 $yNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
 
-                // Update pool with numbers
+                // Update pool with numbers (keep pool status unchanged - CloseExpiredPools handles closing)
                 $pool->update([
                     'x_numbers' => $xNumbers,
                     'y_numbers' => $yNumbers,
