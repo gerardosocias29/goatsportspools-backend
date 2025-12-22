@@ -71,11 +71,16 @@ class SquaresAdminApplicationController extends Controller
             \Log::error('Failed to send confirmation email to applicant: ' . $e->getMessage());
         }
 
-        // Send notification email to admin
+        // Send notification email to all admins from ADMIN_EMAIL env variable
         try {
-            $adminEmail = env('ADMIN_EMAIL', 'admin@goatsportspools.com');
-            Mail::to($adminEmail)->send(new CommissionerApplicationMail($application));
-            \Log::info("Sent notification email to admin: {$adminEmail}");
+            $adminEmails = explode(',', env('ADMIN_EMAIL', 'admin@goatsportspools.com'));
+            foreach ($adminEmails as $adminEmail) {
+                $adminEmail = trim($adminEmail);
+                if (!empty($adminEmail)) {
+                    Mail::to($adminEmail)->send(new CommissionerApplicationMail($application));
+                    \Log::info("Sent notification email to admin: {$adminEmail}");
+                }
+            }
         } catch (\Exception $e) {
             \Log::error('Failed to send commissioner application email to admin: ' . $e->getMessage());
         }
