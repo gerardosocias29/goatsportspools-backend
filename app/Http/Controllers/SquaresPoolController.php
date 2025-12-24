@@ -114,7 +114,7 @@ class SquaresPoolController extends Controller
         $currentUser = auth()->user();
         $currentUserRoleId = $currentUser ? $currentUser->role_id : null;
         $isPoolAdmin = $currentUserId && ($pool->admin_id === $currentUserId || $pool->created_by === $currentUserId);
-        $isSuperAdmin = $currentUserRoleId === 1 || $currentUserRoleId === 2;
+        $isSuperAdmin = $currentUserRoleId === 1; // Only role_id 1 (superadmin) has access to all pools
 
         // Check if user has joined this pool
         $userJoined = false;
