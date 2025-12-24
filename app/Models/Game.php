@@ -10,6 +10,10 @@ class Game extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $casts = [
+        'game_datetime' => 'datetime',
+    ];
+
     protected $fillable = [
         'game_datetime', 'time_zone', 'league_id', 'league',
         'home_team_id', 'visitor_team_id', 'location',
