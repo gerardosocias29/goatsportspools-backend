@@ -109,14 +109,14 @@ class SquaresPoolController extends Controller
             'winners.player'
         ])->findOrFail($id);
 
-        $pool->total_pot = $pool->total_pot;
-        $pool->claimed_squares = $pool->claimed_squares_count;
-        $pool->available_squares = $pool->available_squares_count;
-
-        // Check if current user has joined this pool
+        // Check if current user has access to this pool
         $currentUserId = auth()->id();
-        $userJoined = false;
+        $currentUserRoleId = auth()->user()->role_id ?? null;
+        $isPoolAdmin = $pool->admin_id === $currentUserId || $pool->created_by === $currentUserId;
+        $isSuperAdmin = $currentUserRoleId === 1 || $currentUserRoleId === 2;
 
+        // Check if user has joined this pool
+        $userJoined = false;
         if ($currentUserId) {
             // Check if user has any claimed squares
             $userJoined = $pool->squares()->where('player_id', $currentUserId)->exists();
@@ -127,16 +127,23 @@ class SquaresPoolController extends Controller
             }
         }
 
+        // Access control: Only allow access if user is admin, superadmin, or has joined the pool
+        if (!$isPoolAdmin && !$isSuperAdmin && !$userJoined) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You must join this pool to view it'
+            ], 403);
+        }
+
+        $pool->total_pot = $pool->total_pot;
+        $pool->claimed_squares = $pool->claimed_squares_count;
+        $pool->available_squares = $pool->available_squares_count;
         $pool->user_joined = $userJoined;
 
         // Add has_password flag before hiding password (so frontend knows if password is required)
         $pool->has_password = !empty($pool->password);
 
         // Hide password from non-admins
-        $currentUserRoleId = auth()->user()->role_id ?? null;
-        $isPoolAdmin = $pool->admin_id === $currentUserId || $pool->created_by === $currentUserId;
-        $isSuperAdmin = $currentUserRoleId === 1 || $currentUserRoleId === 2;
-
         if (!$isPoolAdmin && !$isSuperAdmin) {
             unset($pool->password);
         }
