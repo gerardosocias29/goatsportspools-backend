@@ -516,4 +516,51 @@ class GameController extends Controller
             "game" => $game
         ]);
     }
+
+    /**
+     * Delete a game
+     * DELETE /api/games/{id}
+     */
+    public function destroy($id) {
+        $user = Auth::user();
+
+        // Only superadmin (role_id 1) can delete games
+        if($user->role_id != 1) {
+            return response()->json([
+                "status" => false,
+                "message" => "You don't have enough permissions to delete games."
+            ], 403);
+        }
+
+        $game = Game::findOrFail($id);
+
+        // Check if game has any associated pools
+        $poolsCount = \App\Models\SquaresPool::where('game_id', $id)->count();
+        if ($poolsCount > 0) {
+            return response()->json([
+                "status" => false,
+                "message" => "Cannot delete game. It has {$poolsCount} pool(s) associated with it."
+            ], 400);
+        }
+
+        // Check if game has any bets
+        $betsCount = Bet::where('game_id', $id)->count();
+        if ($betsCount > 0) {
+            return response()->json([
+                "status" => false,
+                "message" => "Cannot delete game. It has {$betsCount} bet(s) associated with it."
+            ], 400);
+        }
+
+        // Delete associated odds first
+        Odd::where('game_id', $id)->delete();
+
+        // Soft delete the game
+        $game->delete();
+
+        return response()->json([
+            "status" => true,
+            "message" => "Game deleted successfully."
+        ]);
+    }
 }
