@@ -289,7 +289,8 @@ class SquaresPlayerController extends Controller
                 $pool->update(['pool_status' => 'closed']);
 
                 // Send pool closed notification emails to all players
-                $this->sendPoolClosedNotifications($pool);
+                // Temporarily disabled - uncomment when ready to enable
+                // $this->sendPoolClosedNotifications($pool);
             }
 
             DB::commit();
