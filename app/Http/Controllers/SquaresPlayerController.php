@@ -114,6 +114,14 @@ class SquaresPlayerController extends Controller
             ], 404);
         }
 
+        // Check if current user has already joined this pool
+        $alreadyJoined = false;
+        if (auth()->check()) {
+            $alreadyJoined = SquaresPoolPlayer::where('pool_id', $pool->id)
+                ->where('player_id', auth()->id())
+                ->exists();
+        }
+
         // Return limited info (don't expose password, but indicate if one is required)
         return response()->json([
             'status' => true,
@@ -135,6 +143,7 @@ class SquaresPlayerController extends Controller
                 'claimed_squares' => $pool->claimed_squares_count,
                 'available_squares' => $pool->available_squares_count,
                 'total_pot' => $pool->total_pot,
+                'already_joined' => $alreadyJoined,
             ]
         ]);
     }
