@@ -40,7 +40,7 @@ class TeamController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'league' => 'required|string|in:NFL,NBA,PBA',
+            'league' => 'required|string|in:NFL,NBA,PBA,NCAAF,NCAAB',
             'nickname' => 'nullable|string|max:255',
             'code' => 'nullable|string|max:10',
             'conference' => 'nullable|string|max:255',
@@ -74,7 +74,7 @@ class TeamController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'league' => 'required|string|in:NFL,NBA,PBA',
+            'league' => 'required|string|in:NFL,NBA,PBA,NCAAF,NCAAB',
             'nickname' => 'nullable|string|max:255',
             'code' => 'nullable|string|max:10',
             'conference' => 'nullable|string|max:255',
