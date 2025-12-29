@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, BannerController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -169,6 +169,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/{poolId}/claim-square', [SquaresPlayerController::class, 'claimSquare']); // Claim a square
         Route::post('/{poolId}/release-square', [SquaresPlayerController::class, 'releaseSquare']); // Release a square
         Route::post('/{poolId}/add-credits', [SquaresPlayerController::class, 'addCredits']); // Add credits (admin only)
+        Route::post('/{poolId}/leave', [SquaresPlayerController::class, 'leavePool']); // Leave pool (before close/number assignment)
     });
 
     // Credit Request Routes
@@ -195,10 +196,23 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/', [SquaresAdminApplicationController::class, 'index']); // List all applications (Superadmin only)
         Route::patch('/{id}', [SquaresAdminApplicationController::class, 'update']); // Update application status (Superadmin only)
     });
+
+    // Banner Management Routes (Admin only)
+    Route::group(['prefix' => 'banners'], function () {
+        Route::get('/manage', [BannerController::class, 'manage']); // Get all banners for admin
+        Route::post('/', [BannerController::class, 'store']); // Create banner
+        Route::get('/{id}', [BannerController::class, 'show']); // Get single banner
+        Route::put('/{id}', [BannerController::class, 'update']); // Update banner
+        Route::delete('/{id}', [BannerController::class, 'destroy']); // Delete banner
+        Route::patch('/{id}/toggle-status', [BannerController::class, 'toggleStatus']); // Toggle status
+    });
 });
 
 // Squares Pools Public Routes (No Auth Required)
 Route::get('/squares-pools/by-number/{poolNumber}', [SquaresPlayerController::class, 'getPoolByNumber']); // Get pool by number (public)
+
+// Banners Public Route (No Auth Required)
+Route::get('/banners', [BannerController::class, 'index']); // Get active banners for display
 
 Route::group(['middleware' => 'verify.jwt.jwks'], function () {
     Route::get('/user-details', [UserController::class, 'getUserDetails']);

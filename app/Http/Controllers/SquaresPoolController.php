@@ -52,7 +52,7 @@ class SquaresPoolController extends Controller
         }
 
         // Filter by status
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->get('status') !== 'all') {
             $status = $request->get('status');
             if ($status === 'active' || $status === 'open') {
                 $query->where('pool_status', 'open');
@@ -65,6 +65,14 @@ class SquaresPoolController extends Controller
             } elseif ($status === 'GameStarted') {
                 $query->where('pool_status', 'in_progress');
             }
+        }
+
+        // Filter by league (through game relationship)
+        if ($request->has('league') && $request->get('league') !== 'all') {
+            $league = $request->get('league');
+            $query->whereHas('game', function($q) use ($league) {
+                $q->where('league', $league);
+            });
         }
 
         // Filter by admin (my pools) - for admins only

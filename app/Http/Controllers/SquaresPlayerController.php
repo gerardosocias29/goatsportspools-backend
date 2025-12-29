@@ -399,6 +399,80 @@ class SquaresPlayerController extends Controller
     }
 
     /**
+     * Leave a pool (before close and number assignment)
+     * POST /api/squares-pools/{poolId}/leave
+     */
+    public function leavePool($poolId)
+    {
+        $pool = SquaresPool::findOrFail($poolId);
+
+        // Check if pool is still open
+        if ($pool->pool_status !== 'open') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot leave pool after it has been closed'
+            ], 400);
+        }
+
+        // Check if numbers have been assigned
+        if ($pool->numbers_assigned) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot leave pool after numbers have been assigned'
+            ], 400);
+        }
+
+        // Check if user is in this pool
+        $playerRecord = SquaresPoolPlayer::where('pool_id', $poolId)
+            ->where('player_id', auth()->id())
+            ->first();
+
+        if (!$playerRecord) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You are not a member of this pool'
+            ], 404);
+        }
+
+        // Pool admin cannot leave their own pool
+        if ($pool->admin_id === auth()->id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Pool admin cannot leave their own pool'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Release all squares claimed by this player
+            SquaresPoolSquare::where('pool_id', $poolId)
+                ->where('player_id', auth()->id())
+                ->update([
+                    'player_id' => null,
+                    'claimed_at' => null,
+                ]);
+
+            // Delete the player record
+            $playerRecord->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Successfully left the pool'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to leave pool',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Get my joined pools
      * GET /api/squares-pools/my-joined
      */
