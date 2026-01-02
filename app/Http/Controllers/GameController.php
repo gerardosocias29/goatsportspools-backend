@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Game, Bet, BetGroup, WagerType, Odd};
+use App\Models\{Game, Bet, BetGroup, WagerType, Odd, Team};
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class GameController extends Controller
 {
@@ -562,5 +563,178 @@ class GameController extends Controller
             "status" => true,
             "message" => "Game deleted successfully."
         ]);
+    }
+
+    /**
+     * Import games from CSV file
+     * POST /api/games/import
+     */
+    public function import(Request $request) {
+        $user = Auth::user();
+
+        // Only admins can import games
+        if($user->role_id > 2) {
+            return response()->json([
+                "status" => false,
+                "message" => "You don't have enough permissions to import games."
+            ], 403);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:2048'
+        ]);
+
+        $file = $request->file('file');
+        $path = $file->getRealPath();
+
+        $imported = 0;
+        $errors = [];
+        $lineNumber = 0;
+
+        if (($handle = fopen($path, 'r')) !== false) {
+            // Read header row
+            $headers = fgetcsv($handle);
+            $headers = array_map('strtolower', array_map('trim', $headers));
+
+            // Validate required columns
+            $requiredColumns = ['league', 'game_datetime', 'home_team', 'visitor_team'];
+            $missingColumns = array_diff($requiredColumns, $headers);
+
+            if (!empty($missingColumns)) {
+                fclose($handle);
+                return response()->json([
+                    "status" => false,
+                    "message" => "Missing required columns: " . implode(', ', $missingColumns)
+                ], 400);
+            }
+
+            // Get column indexes
+            $leagueIdx = array_search('league', $headers);
+            $datetimeIdx = array_search('game_datetime', $headers);
+            $homeTeamIdx = array_search('home_team', $headers);
+            $visitorTeamIdx = array_search('visitor_team', $headers);
+
+            // Process each row
+            while (($row = fgetcsv($handle)) !== false) {
+                $lineNumber++;
+
+                // Skip empty rows
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                try {
+                    $league = trim($row[$leagueIdx] ?? '');
+                    $gameDatetime = trim($row[$datetimeIdx] ?? '');
+                    $homeTeamName = trim($row[$homeTeamIdx] ?? '');
+                    $visitorTeamName = trim($row[$visitorTeamIdx] ?? '');
+
+                    // Validate required fields
+                    if (empty($league) || empty($gameDatetime) || empty($homeTeamName) || empty($visitorTeamName)) {
+                        $errors[] = "Row {$lineNumber}: Missing required fields";
+                        continue;
+                    }
+
+                    // Validate league
+                    $validLeagues = ['NFL', 'NBA', 'PBA', 'NCAAF', 'NCAAB'];
+                    if (!in_array(strtoupper($league), $validLeagues)) {
+                        $errors[] = "Row {$lineNumber}: Invalid league '{$league}'";
+                        continue;
+                    }
+                    $league = strtoupper($league);
+
+                    // Find teams by name (case-insensitive) or create if not found
+                    $homeTeam = Team::whereRaw('LOWER(name) = ?', [strtolower($homeTeamName)])->first();
+                    if (!$homeTeam) {
+                        // Auto-create team
+                        $homeTeam = Team::create([
+                            'name' => $homeTeamName,
+                            'league' => $league,
+                            'nickname' => '',
+                            'code' => strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $homeTeamName), 0, 3)),
+                            'conference' => '',
+                            'image_url' => '',
+                        ]);
+                    }
+
+                    $visitorTeam = Team::whereRaw('LOWER(name) = ?', [strtolower($visitorTeamName)])->first();
+                    if (!$visitorTeam) {
+                        // Auto-create team
+                        $visitorTeam = Team::create([
+                            'name' => $visitorTeamName,
+                            'league' => $league,
+                            'nickname' => '',
+                            'code' => strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $visitorTeamName), 0, 3)),
+                            'conference' => '',
+                            'image_url' => '',
+                        ]);
+                    }
+
+                    // Validate teams are different
+                    if ($homeTeam->id === $visitorTeam->id) {
+                        $errors[] = "Row {$lineNumber}: Home and visitor teams cannot be the same";
+                        continue;
+                    }
+
+                    // Parse datetime - treat input as local time and convert to UTC
+                    try {
+                        // Parse as local time (server timezone) then convert to UTC for storage
+                        $parsedDatetime = \Carbon\Carbon::parse($gameDatetime)->utc()->toDateTimeString();
+                    } catch (\Exception $e) {
+                        $errors[] = "Row {$lineNumber}: Invalid datetime format '{$gameDatetime}'";
+                        continue;
+                    }
+
+                    // Create game
+                    $game = new Game();
+                    $game->game_datetime = $parsedDatetime;
+                    $game->time_zone = 1;
+                    $game->league_id = 1;
+                    $game->league = $league;
+                    $game->home_team_id = $homeTeam->id;
+                    $game->visitor_team_id = $visitorTeam->id;
+                    $game->location = '';
+                    $game->city = '';
+                    $game->state = '';
+                    $game->home_team_score = 0;
+                    $game->visitor_team_score = 0;
+                    $game->save();
+
+                    // Create default odds
+                    $odd = new Odd();
+                    $odd->game_id = $game->id;
+                    $odd->favored_team_id = $homeTeam->id;
+                    $odd->underdog_team_id = $visitorTeam->id;
+                    $odd->favored_points = 0;
+                    $odd->underdog_points = 0;
+                    $odd->favored_ml = 0;
+                    $odd->underdog_ml = 0;
+                    $odd->over_total = 0;
+                    $odd->under_total = 0;
+                    $odd->created_by = $user->id;
+                    $odd->save();
+
+                    $imported++;
+                } catch (\Exception $e) {
+                    Log::error("Game import error at row {$lineNumber}: " . $e->getMessage());
+                    $errors[] = "Row {$lineNumber}: " . $e->getMessage();
+                }
+            }
+
+            fclose($handle);
+        }
+
+        $response = [
+            "status" => true,
+            "message" => "Import completed. {$imported} games imported.",
+            "imported" => $imported
+        ];
+
+        if (!empty($errors)) {
+            $response["errors"] = $errors;
+            $response["message"] .= " " . count($errors) . " rows had errors.";
+        }
+
+        return response()->json($response);
     }
 }
