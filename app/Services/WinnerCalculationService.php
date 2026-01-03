@@ -167,25 +167,26 @@ class WinnerCalculationService
 
     /**
      * Get scores for a specific quarter
+     * Uses cumulative score fields (q1_home, half_home, q3_home, final_home) for Squares Pools
      */
     protected function getQuarterScores(Game $game, int $quarter)
     {
         switch ($quarter) {
             case 1:
-                return ($game->home_q1_score !== null && $game->visitor_q1_score !== null)
-                    ? [$game->home_q1_score, $game->visitor_q1_score]
+                return ($game->q1_home !== null && $game->q1_visitor !== null)
+                    ? [$game->q1_home, $game->q1_visitor]
                     : null;
             case 2:
-                return ($game->home_q2_score !== null && $game->visitor_q2_score !== null)
-                    ? [$game->home_q2_score, $game->visitor_q2_score]
+                return ($game->half_home !== null && $game->half_visitor !== null)
+                    ? [$game->half_home, $game->half_visitor]
                     : null;
             case 3:
-                return ($game->home_q3_score !== null && $game->visitor_q3_score !== null)
-                    ? [$game->home_q3_score, $game->visitor_q3_score]
+                return ($game->q3_home !== null && $game->q3_visitor !== null)
+                    ? [$game->q3_home, $game->q3_visitor]
                     : null;
             case 4:
-                return ($game->home_q4_score !== null && $game->visitor_q4_score !== null)
-                    ? [$game->home_q4_score, $game->visitor_q4_score]
+                return ($game->final_home !== null && $game->final_visitor !== null)
+                    ? [$game->final_home, $game->final_visitor]
                     : null;
             default:
                 return null;

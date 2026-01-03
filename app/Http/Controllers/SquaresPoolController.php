@@ -627,7 +627,7 @@ class SquaresPoolController extends Controller
         $user = auth()->user();
         $isSuperAdmin = $user->role_id == 1;
         $isPoolAdmin = $pool->admin_id == $user->id;
-        
+
         if (!$isSuperAdmin && !$isPoolAdmin) {
             return response()->json([
                 'status' => false,
@@ -638,46 +638,75 @@ class SquaresPoolController extends Controller
         try {
             $game = $pool->game;
             $quarter = $request->quarter;
-            
+
             // Determine which columns to check based on quarter
-            $homeScoreColumn = "home_q{$quarter}_score";
-            $visitorScoreColumn = "visitor_q{$quarter}_score";
-            
+            // Use the cumulative score fields used by Squares Pools (q1_home, half_home, q3_home, final_home)
+            switch ($quarter) {
+                case 1:
+                    $homeScoreColumn = 'q1_home';
+                    $visitorScoreColumn = 'q1_visitor';
+                    break;
+                case 2:
+                    $homeScoreColumn = 'half_home';
+                    $visitorScoreColumn = 'half_visitor';
+                    break;
+                case 3:
+                    $homeScoreColumn = 'q3_home';
+                    $visitorScoreColumn = 'q3_visitor';
+                    break;
+                case 4:
+                    $homeScoreColumn = 'final_home';
+                    $visitorScoreColumn = 'final_visitor';
+                    break;
+                default:
+                    $homeScoreColumn = 'q1_home';
+                    $visitorScoreColumn = 'q1_visitor';
+            }
+
             // Check if scores need to be saved
             $scoresExist = !is_null($game->$homeScoreColumn) && !is_null($game->$visitorScoreColumn);
             $scoresProvided = $request->has('home_score') && $request->has('visitor_score');
-            
+
             // If scores are provided in request, save them to the game
+            // ONLY SUPERADMIN can set/update scores
             if ($scoresProvided) {
-                // Update game scores based on quarter
+                if (!$isSuperAdmin) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Only superadmin can set or update game scores. Please contact a superadmin to update scores.'
+                    ], 403);
+                }
+
+                // Update cumulative game scores based on quarter
                 switch ($quarter) {
                     case 1:
-                        $game->home_q1_score = $request->home_score;
-                        $game->visitor_q1_score = $request->visitor_score;
+                        $game->q1_home = $request->home_score;
+                        $game->q1_visitor = $request->visitor_score;
                         break;
                     case 2:
-                        $game->home_q2_score = $request->home_score;
-                        $game->visitor_q2_score = $request->visitor_score;
+                        $game->half_home = $request->home_score;
+                        $game->half_visitor = $request->visitor_score;
                         break;
                     case 3:
-                        $game->home_q3_score = $request->home_score;
-                        $game->visitor_q3_score = $request->visitor_score;
+                        $game->q3_home = $request->home_score;
+                        $game->q3_visitor = $request->visitor_score;
                         break;
                     case 4:
-                        $game->home_q4_score = $request->home_score;
-                        $game->visitor_q4_score = $request->visitor_score;
+                        $game->final_home = $request->home_score;
+                        $game->final_visitor = $request->visitor_score;
                         // Also update final scores
                         $game->home_team_score = $request->home_score;
                         $game->visitor_team_score = $request->visitor_score;
+                        $game->game_status = 'Final';
                         break;
                 }
-                
+
                 $game->save();
             } elseif (!$scoresExist) {
                 // No scores in DB and none provided in request
                 return response()->json([
                     'status' => false,
-                    'message' => "Scores for quarter {$quarter} are not available. Please update game scores first."
+                    'message' => "Scores for quarter {$quarter} are not available. Please contact a superadmin to update game scores first."
                 ], 400);
             }
 
