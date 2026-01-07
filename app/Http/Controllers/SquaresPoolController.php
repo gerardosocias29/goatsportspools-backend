@@ -180,13 +180,13 @@ class SquaresPoolController extends Controller
             'pool_name' => 'required|string|max:255',
             'password' => $passwordRequired ? 'required|string|min:4' : 'nullable|string|min:4',
             'pool_type' => 'required|in:A,B,C,D',
-            'player_pool_type' => 'required|in:OPEN,CREDIT,FREE',
+            'player_pool_type' => 'required|in:OPEN,CREDIT,CREDIT_OPEN,FREE',
             'home_team_id' => 'required|exists:teams,id',
             'visitor_team_id' => 'required|exists:teams,id',
             'entry_fee' => 'required|numeric|min:0',
                 'custom_payout' => 'nullable|numeric|min:0',
             'max_squares_per_player' => 'nullable|integer|min:1|max:100',
-            'credit_cost' => 'required_if:player_pool_type,CREDIT|nullable|integer|min:0|max:1000',
+            'credit_cost' => 'required_if:player_pool_type,CREDIT|required_if:player_pool_type,CREDIT_OPEN|nullable|integer|min:0|max:1000',
             'initial_credits' => 'nullable|integer|min:0',
             'close_datetime' => 'nullable|date',
             'number_assign_datetime' => $requiresScheduledTime ? 'required|date' : 'nullable|date',
@@ -521,7 +521,8 @@ class SquaresPoolController extends Controller
         $pool->update(['pool_status' => 'closed']);
 
         // Send email notifications to all players who have claimed squares
-        $this->sendPoolClosedNotifications($pool);
+        // COMMENTED OUT: Not needed for NFL at the moment
+        // $this->sendPoolClosedNotifications($pool);
 
         return response()->json([
             'status' => true,

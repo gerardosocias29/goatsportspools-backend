@@ -251,8 +251,8 @@ class SquaresPlayerController extends Controller
             ], 400);
         }
 
-        // For CREDIT type, check credits
-        if ($pool->player_pool_type === 'CREDIT') {
+        // For CREDIT or CREDIT_OPEN type, check credits
+        if ($pool->player_pool_type === 'CREDIT' || $pool->player_pool_type === 'CREDIT_OPEN') {
             if ($playerRecord->credits_available < $pool->credit_cost) {
                 return response()->json([
                     'status' => false,
@@ -284,7 +284,7 @@ class SquaresPlayerController extends Controller
             ]);
 
             // Update player record
-            if ($pool->player_pool_type === 'CREDIT') {
+            if ($pool->player_pool_type === 'CREDIT' || $pool->player_pool_type === 'CREDIT_OPEN') {
                 $playerRecord->decrement('credits_available', $pool->credit_cost);
             }
             $playerRecord->increment('squares_count');
@@ -370,7 +370,7 @@ class SquaresPlayerController extends Controller
                 ->first();
 
             if ($playerRecord) {
-                if ($pool->player_pool_type === 'CREDIT') {
+                if ($pool->player_pool_type === 'CREDIT' || $pool->player_pool_type === 'CREDIT_OPEN') {
                     $playerRecord->increment('credits_available', $pool->credit_cost);
                 }
                 $playerRecord->decrement('squares_count');

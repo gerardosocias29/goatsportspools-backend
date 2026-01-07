@@ -55,17 +55,18 @@ class CloseExpiredPools extends Command
 
             // Send "pool closed" emails to all players (numbers not assigned yet)
             // Only send if numbers are NOT assigned - if numbers are assigned, they'll get a different email
-            if (!$pool->numbers_assigned) {
-                $emailService = new PoolEmailService();
-                $emailResult = $emailService->sendPoolClosedEmails($pool);
+            // COMMENTED OUT: Not needed for NFL at the moment
+            // if (!$pool->numbers_assigned) {
+            //     $emailService = new PoolEmailService();
+            //     $emailResult = $emailService->sendPoolClosedEmails($pool);
 
-                if ($emailResult['sent'] > 0) {
-                    $this->info("  → Sent {$emailResult['sent']} pool closed email(s) to players");
-                }
-                if ($emailResult['failed'] > 0) {
-                    $this->warn("  → Failed to send {$emailResult['failed']} email(s)");
-                }
-            }
+            //     if ($emailResult['sent'] > 0) {
+            //         $this->info("  → Sent {$emailResult['sent']} pool closed email(s) to players");
+            //     }
+            //     if ($emailResult['failed'] > 0) {
+            //         $this->warn("  → Failed to send {$emailResult['failed']} email(s)");
+            //     }
+            // }
         }
 
         $this->info("Total pools closed: {$closedCount}");
