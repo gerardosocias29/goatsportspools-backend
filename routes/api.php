@@ -156,6 +156,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/{id}/close', [SquaresPoolController::class, 'closePool']); // Close pool
         Route::post('/{id}/reopen', [SquaresPoolController::class, 'reopenPool']); // Reopen pool
         Route::patch('/{id}/settings', [SquaresPoolController::class, 'updateSettings']); // Update pool settings
+        Route::put('/{id}/password', [SquaresPoolController::class, 'updatePassword']); // Update pool password (superadmin or pool owner)
         Route::delete('/{id}', [SquaresPoolController::class, 'destroy']); // Delete pool
 
         // Winner calculation routes

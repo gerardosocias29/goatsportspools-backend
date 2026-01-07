@@ -581,6 +581,51 @@ class SquaresPoolController extends Controller
     }
 
     /**
+     * Update pool password
+     * PUT /api/squares-pools/{id}/password
+     * Only superadmin or pool creator can change password
+     */
+    public function updatePassword(Request $request, $id)
+    {
+        $pool = SquaresPool::findOrFail($id);
+        $user = auth()->user();
+        $isSuperAdmin = $user->role_id == 1;
+        $isPoolOwner = $pool->admin_id == $user->id;
+
+        // Only superadmin or pool owner can change password
+        if (!$isSuperAdmin && !$isPoolOwner) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized. Only pool creator or superadmin can change the password.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => 'nullable|string|min:4|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $newPassword = $request->password;
+
+        // If password is empty/null, remove password (make pool open)
+        $pool->update([
+            'password' => $newPassword ?: null
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => $newPassword ? 'Pool password updated successfully' : 'Pool password removed',
+            'data' => $pool->fresh()
+        ]);
+    }
+
+    /**
      * Delete a pool
      * DELETE /api/squares-pools/{id}
      */
