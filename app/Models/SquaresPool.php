@@ -136,14 +136,13 @@ class SquaresPool extends Model
      */
     public function getTotalPotAttribute()
     {
-        // Use custom payout if set
-        if ($this->custom_payout !== null) {
+        // Use custom payout if set (and greater than 0)
+        if ($this->custom_payout !== null && $this->custom_payout > 0) {
             return $this->custom_payout;
         }
-        
-        // Otherwise calculate from entry fee
-        $claimedSquares = $this->squares()->whereNotNull('player_id')->count();
-        return $this->entry_fee * $claimedSquares;
+
+        // Otherwise calculate from entry fee * 100 squares (full pot)
+        return $this->entry_fee * 100;
     }
 
     /**
