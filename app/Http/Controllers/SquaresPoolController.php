@@ -614,8 +614,9 @@ class SquaresPoolController extends Controller
         $newPassword = $request->password;
 
         // If password is empty/null, remove password (make pool open)
+        // Hash the password if provided
         $pool->update([
-            'password' => $newPassword ?: null
+            'password' => $newPassword ? Hash::make($newPassword) : null
         ]);
 
         return response()->json([

@@ -56,6 +56,13 @@ class SquaresPool extends Model
     ];
 
     /**
+     * The attributes that should be hidden for serialization.
+     */
+    protected $hidden = [
+        'password',
+    ];
+
+    /**
      * Generate a unique pool number
      */
     public static function generatePoolNumber()
