@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             NcaaTeamsSeeder::class,
             SquaresPoolsSeeder::class, // Uncomment if you want to seed squares pools
             TeamsSeeder::class,
+            NbaTeamsSeeder::class,
         ]);
 
         $this->command->info('Database seeded successfully!');
