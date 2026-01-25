@@ -58,13 +58,14 @@ class SquaresPlayerController extends Controller
             }
         }
 
-        // Check if pool is open
-        if ($pool->pool_status !== 'open') {
-            return response()->json([
-                'status' => false,
-                'message' => 'Pool is not open for joining'
-            ], 400);
-        }
+        // Users can join pools even when closed (to view results, etc.)
+        // Claiming squares is only allowed when pool status is 'open'
+        // if ($pool->pool_status !== 'open') {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'Pool is not open for joining'
+        //     ], 400);
+        // }
 
         // Check if already joined
         $existingPlayer = SquaresPoolPlayer::where('pool_id', $pool->id)
