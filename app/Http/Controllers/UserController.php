@@ -122,7 +122,15 @@ class UserController extends Controller
     public function getUserDetails(Request $request)
     {
         $user = $request->attributes->get('user');
-        $newUser = User::with(['role.sub_modules'])->where('email', $user->email)->where('clerk_id', $user->id)->first();
+
+        // First try to find by clerk_id
+        $newUser = User::with(['role.sub_modules'])->where('clerk_id', $user->id)->first();
+
+        // If not found by clerk_id, try to find by email (legacy user from old registration)
+        if (!$newUser) {
+            $newUser = User::with(['role.sub_modules'])->where('email', $user->email)->first();
+        }
+
         if(!$newUser){
             $newUser = new User();
             $newUser->email = $user->email;
@@ -138,6 +146,10 @@ class UserController extends Controller
             $newUser->save();
 
         } else {
+            // Update clerk_id if missing (legacy user linking)
+            if (empty($newUser->clerk_id)) {
+                $newUser->clerk_id = $user->id;
+            }
             $newUser->name = $user->full_name ?? '';
             $newUser->phone = $user->phone ?? '';
             $newUser->first_name = $user->first_name ?? '';

@@ -17,6 +17,9 @@ class Kernel extends ConsoleKernel
 
         // Assign numbers for scheduled Type B pools every minute
         $schedule->command('squares:assign-scheduled-numbers')->everyMinute();
+
+        // Update game status to 'started' when game datetime is reached
+        $schedule->command('squares:update-game-status')->everyMinute();
     }
 
     /**

@@ -8,9 +8,12 @@ use App\Models\SquaresPoolPlayer;
 use App\Models\Game;
 use App\Services\WinnerCalculationService;
 use App\Services\QRCodeService;
+use App\Mail\PoolClosedMail;
+use App\Mail\NumbersAssignedMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class SquaresPoolController extends Controller
@@ -49,7 +52,7 @@ class SquaresPoolController extends Controller
         }
 
         // Filter by status
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->get('status') !== 'all') {
             $status = $request->get('status');
             if ($status === 'active' || $status === 'open') {
                 $query->where('pool_status', 'open');
@@ -64,6 +67,14 @@ class SquaresPoolController extends Controller
             }
         }
 
+        // Filter by league (through game relationship)
+        if ($request->has('league') && $request->get('league') !== 'all') {
+            $league = $request->get('league');
+            $query->whereHas('game', function($q) use ($league) {
+                $q->where('league', $league);
+            });
+        }
+
         // Filter by admin (my pools) - for admins only
         if ($request->has('my_pools') && $request->get('my_pools') === 'true') {
             $query->where('admin_id', auth()->id());
@@ -71,11 +82,20 @@ class SquaresPoolController extends Controller
 
         $pools = $query->orderBy('created_at', 'desc')->get();
 
+        // Get current user ID for checking if joined
+        $currentUserId = auth()->id();
+
         // Append computed attributes
-        $pools->each(function($pool) {
+        $pools->each(function($pool) use ($currentUserId) {
             $pool->total_pot = $pool->total_pot;
             $pool->claimed_squares = $pool->claimed_squares_count;
             $pool->available_squares = $pool->available_squares_count;
+            $pool->players_count = SquaresPoolPlayer::where('pool_id', $pool->id)->count();
+            // Check if current user has joined this pool
+            $pool->user_joined = $currentUserId ?
+                SquaresPoolPlayer::where('pool_id', $pool->id)
+                    ->where('player_id', $currentUserId)
+                    ->exists() : false;
         });
 
         return response()->json($pools);
@@ -97,14 +117,15 @@ class SquaresPoolController extends Controller
             'winners.player'
         ])->findOrFail($id);
 
-        $pool->total_pot = $pool->total_pot;
-        $pool->claimed_squares = $pool->claimed_squares_count;
-        $pool->available_squares = $pool->available_squares_count;
-
-        // Check if current user has joined this pool
+        // Check if current user has access to this pool
         $currentUserId = auth()->id();
-        $userJoined = false;
+        $currentUser = auth()->user();
+        $currentUserRoleId = $currentUser ? $currentUser->role_id : null;
+        $isPoolAdmin = $currentUserId && ($pool->admin_id === $currentUserId || $pool->created_by === $currentUserId);
+        $isSuperAdmin = $currentUserRoleId === 1; // Only role_id 1 (superadmin) has access to all pools
 
+        // Check if user has joined this pool
+        $userJoined = false;
         if ($currentUserId) {
             // Check if user has any claimed squares
             $userJoined = $pool->squares()->where('player_id', $currentUserId)->exists();
@@ -115,13 +136,23 @@ class SquaresPoolController extends Controller
             }
         }
 
+        // Access control: Only allow access if user is admin, superadmin, or has joined the pool
+        if (!$isPoolAdmin && !$isSuperAdmin && !$userJoined) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You must join this pool to view it'
+            ], 403);
+        }
+
+        $pool->total_pot = $pool->total_pot;
+        $pool->claimed_squares = $pool->claimed_squares_count;
+        $pool->available_squares = $pool->available_squares_count;
         $pool->user_joined = $userJoined;
 
-        // Hide password from non-admins
-        $currentUserRoleId = auth()->user()->role_id ?? null;
-        $isPoolAdmin = $pool->admin_id === $currentUserId || $pool->created_by === $currentUserId;
-        $isSuperAdmin = $currentUserRoleId === 1 || $currentUserRoleId === 2;
+        // Add has_password flag before hiding password (so frontend knows if password is required)
+        $pool->has_password = !empty($pool->password);
 
+        // Hide password from non-admins
         if (!$isPoolAdmin && !$isSuperAdmin) {
             unset($pool->password);
         }
@@ -140,20 +171,25 @@ class SquaresPoolController extends Controller
         $accessType = $request->input('access_type', $request->input('costType', ''));
         $passwordRequired = ($accessType === 'PasswordOpen' || !empty($request->password));
 
+        // Determine if datetime fields are required based on numbers_type
+        $numbersType = $request->input('numbers_type', '');
+        $requiresScheduledTime = $numbersType === 'TimeSet';
+
         $validator = Validator::make($request->all(), [
             'game_id' => 'required|exists:games,id',
             'pool_name' => 'required|string|max:255',
             'password' => $passwordRequired ? 'required|string|min:4' : 'nullable|string|min:4',
             'pool_type' => 'required|in:A,B,C,D',
-            'player_pool_type' => 'required|in:OPEN,CREDIT,FREE',
+            'player_pool_type' => 'required|in:OPEN,CREDIT,CREDIT_OPEN,FREE',
             'home_team_id' => 'required|exists:teams,id',
             'visitor_team_id' => 'required|exists:teams,id',
             'entry_fee' => 'required|numeric|min:0',
+                'custom_payout' => 'nullable|numeric|min:0',
             'max_squares_per_player' => 'nullable|integer|min:1|max:100',
-            'credit_cost' => 'required_if:player_pool_type,CREDIT|nullable|integer|min:0|max:1000',
+            'credit_cost' => 'required_if:player_pool_type,CREDIT|required_if:player_pool_type,CREDIT_OPEN|nullable|integer|min:0|max:1000',
             'initial_credits' => 'nullable|integer|min:0',
-            'close_datetime' => 'required_if:pool_type,B,C|nullable|date',
-            'number_assign_datetime' => 'required_if:pool_type,B|nullable|date',
+            'close_datetime' => 'nullable|date',
+            'number_assign_datetime' => $requiresScheduledTime ? 'required|date' : 'nullable|date',
             'reward1_percent' => 'required|numeric|min:0|max:100',
             'reward2_percent' => 'required|numeric|min:0|max:100',
             'reward3_percent' => 'required|numeric|min:0|max:100',
@@ -195,6 +231,22 @@ class SquaresPoolController extends Controller
             $qrCodeService = new QRCodeService();
             $qrCodeUrl = $qrCodeService->generatePoolQRCode($poolNumber, $request->pool_name);
 
+            // Determine numbers_type from request or derive from pool_type
+            $numbersType = $request->numbers_type;
+            if (!$numbersType) {
+                // Fallback: derive from pool_type if not explicitly provided
+                switch ($request->pool_type) {
+                    case 'A':
+                        $numbersType = 'Ascending';
+                        break;
+                    case 'B':
+                        $numbersType = 'TimeSet';
+                        break;
+                    default:
+                        $numbersType = 'AdminTrigger';
+                }
+            }
+
             // Create pool
             $pool = SquaresPool::create([
                 'admin_id' => auth()->id(),
@@ -204,6 +256,7 @@ class SquaresPoolController extends Controller
                 'pool_name' => $request->pool_name,
                 'pool_description' => $request->pool_description,
                 'pool_type' => $request->pool_type,
+                'numbers_type' => $numbersType,
                 'player_pool_type' => $request->player_pool_type,
                 'reward_type' => $request->reward_type ?? 'CreditsRewards',
                 'grid_fee_type' => $gridFeeType,
@@ -211,6 +264,7 @@ class SquaresPoolController extends Controller
                 'home_team_id' => $request->home_team_id,
                 'visitor_team_id' => $request->visitor_team_id,
                 'entry_fee' => $request->entry_fee,
+                'custom_payout' => $request->custom_payout,
                 'max_squares_per_player' => $request->max_squares_per_player,
                 'credit_cost' => $request->credit_cost,
                 'initial_credits' => $request->initial_credits ?? 0,
@@ -244,10 +298,18 @@ class SquaresPoolController extends Controller
             }
             SquaresPoolSquare::insert($squares);
 
-            // For Type A, assign numbers immediately
-            if ($request->pool_type === 'A') {
-                $this->assignNumbers($pool->id, 'random');
+            // For Type A (In Order/Ascending), assign numbers immediately in order 0-9
+            if ($request->pool_type === 'A' || $numbersType === 'Ascending') {
+                $this->assignNumbers($pool->id, 'ascending', null, null, true);
             }
+
+            // Add pool creator as a player with initial credits
+            SquaresPoolPlayer::create([
+                'pool_id' => $pool->id,
+                'player_id' => auth()->id(),
+                'credits_available' => $request->initial_credits ?? 0,
+                'squares_count' => 0,
+            ]);
 
             DB::commit();
 
@@ -272,29 +334,54 @@ class SquaresPoolController extends Controller
      * Assign numbers to pool (Type A immediate, Type B auto, Type C manual)
      * POST /api/squares-pools/{id}/assign-numbers
      */
-    public function assignNumbers($poolId, $mode = 'random', $xNumbers = null, $yNumbers = null)
+    public function assignNumbers($poolId, $mode = 'random', $xNumbers = null, $yNumbers = null, $internalCall = false)
     {
+        \Log::info('assignNumbers called', [
+            'poolId' => $poolId,
+            'mode' => $mode,
+            'internalCall' => $internalCall,
+        ]);
+
         $pool = SquaresPool::findOrFail($poolId);
 
-        // Check authorization
-        if ($pool->admin_id !== auth()->id()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized'
-            ], 403);
+        // Skip authorization check for internal calls (e.g., during pool creation)
+        if (!$internalCall) {
+            // Check authorization - pool admin or superadmin (role_id 1 or 2)
+            $user = auth()->user();
+            $isPoolAdmin = $pool->admin_id === $user->id;
+            $isSuperAdmin = in_array($user->role_id, [1, 2]);
+
+            if (!$isPoolAdmin && !$isSuperAdmin) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
         }
 
         // Check if already assigned
         if ($pool->numbers_assigned) {
+            if ($internalCall) {
+                return true; // Already assigned, skip silently for internal calls
+            }
             return response()->json([
                 'status' => false,
                 'message' => 'Numbers already assigned'
             ], 400);
         }
 
-        DB::beginTransaction();
+        // Use existing transaction if internal call, otherwise start new one
+        $useTransaction = !$internalCall;
+        if ($useTransaction) {
+            DB::beginTransaction();
+        }
+
         try {
-            if ($mode === 'random') {
+            if ($mode === 'ascending') {
+                // Assign numbers in order 0-9
+                $xNumbers = range(0, 9);
+                $yNumbers = range(0, 9);
+            } elseif ($mode === 'random') {
                 // Generate random numbers 0-9
                 $xNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
                 $yNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
@@ -317,11 +404,16 @@ class SquaresPoolController extends Controller
                 }
             }
 
-            // Update pool with numbers
+            // Update pool with numbers (keep pool status unchanged - admin controls when to close)
             $pool->update([
                 'x_numbers' => $xNumbers,
                 'y_numbers' => $yNumbers,
                 'numbers_assigned' => true,
+            ]);
+
+            \Log::info('assignNumbers: Numbers assigned', [
+                'pool_id' => $pool->id,
+                'pool_status' => $pool->pool_status,
             ]);
 
             // Update all squares with their assigned numbers
@@ -333,7 +425,18 @@ class SquaresPoolController extends Controller
                 ]);
             }
 
-            DB::commit();
+            if ($useTransaction) {
+                DB::commit();
+            }
+
+            // Send numbers assigned emails to all players (skip for internal calls during creation)
+            if (!$internalCall) {
+                $this->sendNumbersAssignedEmails($pool, $xNumbers, $yNumbers);
+            }
+
+            if ($internalCall) {
+                return true; // Success for internal calls
+            }
 
             return response()->json([
                 'status' => true,
@@ -345,13 +448,36 @@ class SquaresPoolController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            if ($useTransaction) {
+                DB::rollBack();
+            }
+            if ($internalCall) {
+                throw $e; // Re-throw for internal calls so parent transaction can handle it
+            }
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to assign numbers',
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Random number assignment endpoint (for AdminTrigger or fallback)
+     * POST /api/squares-pools/{id}/assign-numbers
+     */
+    public function assignNumbersRandom($id)
+    {
+        return $this->assignNumbers($id, 'random');
+    }
+
+    /**
+     * Ascending number assignment endpoint (0-9 in order)
+     * POST /api/squares-pools/{id}/assign-numbers-ascending
+     */
+    public function assignNumbersAscending($id)
+    {
+        return $this->assignNumbers($id, 'ascending');
     }
 
     /**
@@ -393,6 +519,10 @@ class SquaresPoolController extends Controller
         }
 
         $pool->update(['pool_status' => 'closed']);
+
+        // Send email notifications to all players who have claimed squares
+        // COMMENTED OUT: Not needed for NFL at the moment
+        // $this->sendPoolClosedNotifications($pool);
 
         return response()->json([
             'status' => true,
@@ -451,6 +581,52 @@ class SquaresPoolController extends Controller
     }
 
     /**
+     * Update pool password
+     * PUT /api/squares-pools/{id}/password
+     * Only superadmin or pool creator can change password
+     */
+    public function updatePassword(Request $request, $id)
+    {
+        $pool = SquaresPool::findOrFail($id);
+        $user = auth()->user();
+        $isSuperAdmin = $user->role_id == 1;
+        $isPoolOwner = $pool->admin_id == $user->id;
+
+        // Only superadmin or pool owner can change password
+        if (!$isSuperAdmin && !$isPoolOwner) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized. Only pool creator or superadmin can change the password.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => 'nullable|string|min:4|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $newPassword = $request->password;
+
+        // If password is empty/null, remove password (make pool open)
+        // Hash the password if provided
+        $pool->update([
+            'password' => $newPassword ? Hash::make($newPassword) : null
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => $newPassword ? 'Pool password updated successfully' : 'Pool password removed',
+            'data' => $pool->fresh()
+        ]);
+    }
+
+    /**
      * Delete a pool
      * DELETE /api/squares-pools/{id}
      */
@@ -481,6 +657,8 @@ class SquaresPoolController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'quarter' => 'required|integer|min:1|max:4',
+            'home_score' => 'nullable|integer|min:0',
+            'visitor_score' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -492,8 +670,12 @@ class SquaresPoolController extends Controller
 
         $pool = SquaresPool::findOrFail($id);
 
-        // Check authorization
-        if ($pool->admin_id !== auth()->id()) {
+        // Check authorization - pool admin or superadmin (role_id 1)
+        $user = auth()->user();
+        $isSuperAdmin = $user->role_id == 1;
+        $isPoolAdmin = $pool->admin_id == $user->id;
+
+        if (!$isSuperAdmin && !$isPoolAdmin) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized'
@@ -501,6 +683,80 @@ class SquaresPoolController extends Controller
         }
 
         try {
+            $game = $pool->game;
+            $quarter = $request->quarter;
+
+            // Determine which columns to check based on quarter
+            // Use the cumulative score fields used by Squares Pools (q1_home, half_home, q3_home, final_home)
+            switch ($quarter) {
+                case 1:
+                    $homeScoreColumn = 'q1_home';
+                    $visitorScoreColumn = 'q1_visitor';
+                    break;
+                case 2:
+                    $homeScoreColumn = 'half_home';
+                    $visitorScoreColumn = 'half_visitor';
+                    break;
+                case 3:
+                    $homeScoreColumn = 'q3_home';
+                    $visitorScoreColumn = 'q3_visitor';
+                    break;
+                case 4:
+                    $homeScoreColumn = 'final_home';
+                    $visitorScoreColumn = 'final_visitor';
+                    break;
+                default:
+                    $homeScoreColumn = 'q1_home';
+                    $visitorScoreColumn = 'q1_visitor';
+            }
+
+            // Check if scores need to be saved
+            $scoresExist = !is_null($game->$homeScoreColumn) && !is_null($game->$visitorScoreColumn);
+            $scoresProvided = $request->has('home_score') && $request->has('visitor_score');
+
+            // If scores are provided in request, save them to the game
+            // ONLY SUPERADMIN can set/update scores
+            if ($scoresProvided) {
+                if (!$isSuperAdmin) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Only superadmin can set or update game scores. Please contact a superadmin to update scores.'
+                    ], 403);
+                }
+
+                // Update cumulative game scores based on quarter
+                switch ($quarter) {
+                    case 1:
+                        $game->q1_home = $request->home_score;
+                        $game->q1_visitor = $request->visitor_score;
+                        break;
+                    case 2:
+                        $game->half_home = $request->home_score;
+                        $game->half_visitor = $request->visitor_score;
+                        break;
+                    case 3:
+                        $game->q3_home = $request->home_score;
+                        $game->q3_visitor = $request->visitor_score;
+                        break;
+                    case 4:
+                        $game->final_home = $request->home_score;
+                        $game->final_visitor = $request->visitor_score;
+                        // Also update final scores
+                        $game->home_team_score = $request->home_score;
+                        $game->visitor_team_score = $request->visitor_score;
+                        $game->game_status = 'Final';
+                        break;
+                }
+
+                $game->save();
+            } elseif (!$scoresExist) {
+                // No scores in DB and none provided in request
+                return response()->json([
+                    'status' => false,
+                    'message' => "Scores for quarter {$quarter} are not available. Please contact a superadmin to update game scores first."
+                ], 400);
+            }
+
             $winnerService = new WinnerCalculationService();
             $result = $winnerService->calculateWinners($id, $request->quarter);
 
@@ -522,8 +778,12 @@ class SquaresPoolController extends Controller
     {
         $pool = SquaresPool::findOrFail($id);
 
-        // Check authorization
-        if ($pool->admin_id !== auth()->id()) {
+        // Check authorization - pool admin or superadmin (role_id 1)
+        $user = auth()->user();
+        $isSuperAdmin = $user->role_id == 1;
+        $isPoolAdmin = $pool->admin_id == $user->id;
+        
+        if (!$isSuperAdmin && !$isPoolAdmin) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized'
@@ -637,4 +897,180 @@ class SquaresPoolController extends Controller
             'data' => $players->values()
         ]);
     }
+
+    /**
+     * Send pool closed notification emails to all players (when pool is manually closed)
+     * This handles the case where numbers may or may not be assigned yet
+     *
+     * @param SquaresPool $pool
+     */
+    private function sendPoolClosedNotifications(SquaresPool $pool)
+    {
+        try {
+            // Load pool with related data
+            $pool->load(['admin', 'homeTeam', 'visitorTeam', 'squares.player', 'players.player']);
+
+            $homeTeamName = $pool->homeTeam->name ?? 'Home Team';
+            $visitorTeamName = $pool->visitorTeam->name ?? 'Visitor Team';
+            $adminUsername = $pool->admin->username ?? $pool->admin->name ?? 'Pool Manager';
+            $totalSquaresFilled = $pool->squares->whereNotNull('player_id')->count();
+            $poolUrl = env('APP_FRONTEND_URL', env('APP_URL')) . '/squares/pool/' . $pool->id;
+
+            // Get x_numbers and y_numbers from pool (may be null if not assigned yet)
+            $xNumbers = $pool->x_numbers ?? [];
+            $yNumbers = $pool->y_numbers ?? [];
+            $numbersAssigned = $pool->numbers_assigned ?? false;
+
+            // Get all players who have claimed squares
+            $playersWithSquares = $pool->squares
+                ->whereNotNull('player_id')
+                ->groupBy('player_id');
+
+            foreach ($playersWithSquares as $playerId => $playerSquares) {
+                $player = $playerSquares->first()->player;
+
+                if (!$player || !$player->email) {
+                    continue;
+                }
+
+                // Get player's squares with assigned numbers (if available)
+                $squaresData = $playerSquares->map(function ($square) use ($xNumbers, $yNumbers, $numbersAssigned) {
+                    return [
+                        'x_number' => $numbersAssigned ? ($xNumbers[$square->x_coordinate] ?? $square->x_number ?? '?') : '?',
+                        'y_number' => $numbersAssigned ? ($yNumbers[$square->y_coordinate] ?? $square->y_number ?? '?') : '?',
+                        'x_coordinate' => $square->x_coordinate,
+                        'y_coordinate' => $square->y_coordinate,
+                    ];
+                })->values()->toArray();
+
+                // Get first square's numbers for example (if available)
+                $exampleX = $squaresData[0]['x_number'] ?? '?';
+                $exampleY = $squaresData[0]['y_number'] ?? '?';
+
+                $emailData = [
+                    'pool_name' => $pool->pool_name,
+                    'admin_username' => $adminUsername,
+                    'player_name' => $player->name ?? $player->username ?? 'Player',
+                    'player_email' => $player->email,
+                    'home_team' => $homeTeamName,
+                    'visitor_team' => $visitorTeamName,
+                    'squares_count' => count($squaresData),
+                    'player_squares' => $squaresData,
+                    'total_squares_filled' => $totalSquaresFilled,
+                    'pool_url' => $poolUrl,
+                    'example_x' => $exampleX,
+                    'example_y' => $exampleY,
+                    'numbers_assigned' => $numbersAssigned,
+                    'logo_url' => env('APP_FRONTEND_URL', env('APP_URL')) . '/img/v2_logo.png',
+                ];
+
+                // Send email
+                Mail::to($player->email)->send(new PoolClosedMail($emailData));
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail the main operation
+            \Log::error('Failed to send pool closed notification emails: ' . $e->getMessage(), [
+                'pool_id' => $pool->id,
+                'error' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Send numbers assigned notification emails to all players
+     *
+     * @param SquaresPool $pool
+     * @param array $xNumbers
+     * @param array $yNumbers
+     */
+    private function sendNumbersAssignedEmails(SquaresPool $pool, array $xNumbers, array $yNumbers)
+    {
+        try {
+            // Load pool with related data (squares.player to get player info for each square)
+            $pool->load(['admin', 'homeTeam', 'visitorTeam', 'squares.player']);
+
+            $claimedSquaresCount = $pool->squares->whereNotNull('player_id')->count();
+
+            \Log::info('sendNumbersAssignedEmails: Starting for pool #' . $pool->id, [
+                'pool_name' => $pool->pool_name,
+                'squares_count' => $pool->squares->count(),
+                'claimed_squares' => $claimedSquaresCount,
+            ]);
+
+            if ($claimedSquaresCount === 0) {
+                \Log::info('sendNumbersAssignedEmails: No claimed squares - no emails to send');
+                return;
+            }
+
+            $homeTeamName = $pool->homeTeam->name ?? 'Home Team';
+            $visitorTeamName = $pool->visitorTeam->name ?? 'Visitor Team';
+            $adminUsername = $pool->admin->username ?? $pool->admin->name ?? 'Pool Manager';
+            $totalSquaresFilled = $pool->squares->whereNotNull('player_id')->count();
+            $poolUrl = env('APP_FRONTEND_URL', env('APP_URL')) . '/squares/pool/' . $pool->id;
+
+            // Get all players who have claimed squares
+            $playersWithSquares = $pool->squares
+                ->whereNotNull('player_id')
+                ->groupBy('player_id');
+
+            foreach ($playersWithSquares as $playerId => $playerSquares) {
+                $player = $playerSquares->first()->player;
+
+                if (!$player || !$player->email) {
+                    continue;
+                }
+
+                // Get player's squares with assigned numbers
+                $squaresData = $playerSquares->map(function ($square) use ($xNumbers, $yNumbers) {
+                    return [
+                        'x_number' => $xNumbers[$square->x_coordinate] ?? $square->x_number,
+                        'y_number' => $yNumbers[$square->y_coordinate] ?? $square->y_number,
+                        'x_coordinate' => $square->x_coordinate,
+                        'y_coordinate' => $square->y_coordinate,
+                    ];
+                })->values()->toArray();
+
+                // Get first square's numbers for example
+                $exampleX = $squaresData[0]['x_number'] ?? 0;
+                $exampleY = $squaresData[0]['y_number'] ?? 0;
+
+                $emailData = [
+                    'pool_name' => $pool->pool_name,
+                    'admin_username' => $adminUsername,
+                    'player_name' => $player->name ?? $player->username ?? 'Player',
+                    'player_email' => $player->email,
+                    'home_team' => $homeTeamName,
+                    'visitor_team' => $visitorTeamName,
+                    'squares_count' => count($squaresData),
+                    'player_squares' => $squaresData,
+                    'total_squares_filled' => $totalSquaresFilled,
+                    'pool_url' => $poolUrl,
+                    'example_x' => $exampleX,
+                    'example_y' => $exampleY,
+                    'numbers_assigned' => true,
+                    'x_numbers' => $xNumbers, // Full X axis numbers for grid display
+                    'y_numbers' => $yNumbers, // Full Y axis numbers for grid display
+                    'logo_url' => env('APP_FRONTEND_URL', env('APP_URL')) . '/img/v2_logo.png',
+                ];
+
+                // Send email using NumbersAssignedMail (since numbers are assigned)
+                Mail::to($player->email)->send(new NumbersAssignedMail($emailData));
+
+                \Log::info('sendNumbersAssignedEmails: Sent email to ' . $player->email, [
+                    'player_name' => $player->name,
+                    'squares_count' => count($squaresData),
+                ]);
+            }
+
+            \Log::info('sendNumbersAssignedEmails: Completed for pool #' . $pool->id);
+        } catch (\Exception $e) {
+            // Log error but don't fail the main operation
+            \Log::error('Failed to send numbers assigned emails: ' . $e->getMessage(), [
+                'pool_id' => $pool->id,
+                'error' => $e->getTraceAsString()
+            ]);
+        }
+    }
 }
+
+

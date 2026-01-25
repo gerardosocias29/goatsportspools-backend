@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\SquaresPool;
+use App\Services\PoolEmailService;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
 
@@ -51,6 +52,21 @@ class CloseExpiredPools extends Command
 
             $this->info("Closed pool #{$pool->pool_number} - {$pool->pool_name}");
             $closedCount++;
+
+            // Send "pool closed" emails to all players (numbers not assigned yet)
+            // Only send if numbers are NOT assigned - if numbers are assigned, they'll get a different email
+            // COMMENTED OUT: Not needed for NFL at the moment
+            // if (!$pool->numbers_assigned) {
+            //     $emailService = new PoolEmailService();
+            //     $emailResult = $emailService->sendPoolClosedEmails($pool);
+
+            //     if ($emailResult['sent'] > 0) {
+            //         $this->info("  → Sent {$emailResult['sent']} pool closed email(s) to players");
+            //     }
+            //     if ($emailResult['failed'] > 0) {
+            //         $this->warn("  → Failed to send {$emailResult['failed']} email(s)");
+            //     }
+            // }
         }
 
         $this->info("Total pools closed: {$closedCount}");

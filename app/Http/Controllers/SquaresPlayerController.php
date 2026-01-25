@@ -8,7 +8,9 @@ use App\Models\SquaresPoolPlayer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use App\Mail\PoolClosedMail;
 
 class SquaresPlayerController extends Controller
 {
@@ -112,7 +114,15 @@ class SquaresPlayerController extends Controller
             ], 404);
         }
 
-        // Return limited info (don't expose password)
+        // Check if current user has already joined this pool
+        $alreadyJoined = false;
+        if (auth()->check()) {
+            $alreadyJoined = SquaresPoolPlayer::where('pool_id', $pool->id)
+                ->where('player_id', auth()->id())
+                ->exists();
+        }
+
+        // Return limited info (don't expose password, but indicate if one is required)
         return response()->json([
             'status' => true,
             'data' => [
@@ -121,6 +131,7 @@ class SquaresPlayerController extends Controller
                 'pool_name' => $pool->pool_name,
                 'pool_type' => $pool->pool_type,
                 'player_pool_type' => $pool->player_pool_type,
+                'has_password' => !empty($pool->password),
                 'entry_fee' => $pool->entry_fee,
                 'max_squares_per_player' => $pool->max_squares_per_player,
                 'credit_cost' => $pool->credit_cost,
@@ -132,6 +143,7 @@ class SquaresPlayerController extends Controller
                 'claimed_squares' => $pool->claimed_squares_count,
                 'available_squares' => $pool->available_squares_count,
                 'total_pot' => $pool->total_pot,
+                'already_joined' => $alreadyJoined,
             ]
         ]);
     }
@@ -239,8 +251,8 @@ class SquaresPlayerController extends Controller
             ], 400);
         }
 
-        // For CREDIT type, check credits
-        if ($pool->player_pool_type === 'CREDIT') {
+        // For CREDIT or CREDIT_OPEN type, check credits
+        if ($pool->player_pool_type === 'CREDIT' || $pool->player_pool_type === 'CREDIT_OPEN') {
             if ($playerRecord->credits_available < $pool->credit_cost) {
                 return response()->json([
                     'status' => false,
@@ -272,7 +284,7 @@ class SquaresPlayerController extends Controller
             ]);
 
             // Update player record
-            if ($pool->player_pool_type === 'CREDIT') {
+            if ($pool->player_pool_type === 'CREDIT' || $pool->player_pool_type === 'CREDIT_OPEN') {
                 $playerRecord->decrement('credits_available', $pool->credit_cost);
             }
             $playerRecord->increment('squares_count');
@@ -284,6 +296,10 @@ class SquaresPlayerController extends Controller
 
             if ($claimedCount === 100) {
                 $pool->update(['pool_status' => 'closed']);
+
+                // Send pool closed notification emails to all players
+                // Temporarily disabled - uncomment when ready to enable
+                // $this->sendPoolClosedNotifications($pool);
             }
 
             DB::commit();
@@ -354,7 +370,7 @@ class SquaresPlayerController extends Controller
                 ->first();
 
             if ($playerRecord) {
-                if ($pool->player_pool_type === 'CREDIT') {
+                if ($pool->player_pool_type === 'CREDIT' || $pool->player_pool_type === 'CREDIT_OPEN') {
                     $playerRecord->increment('credits_available', $pool->credit_cost);
                 }
                 $playerRecord->decrement('squares_count');
@@ -377,6 +393,80 @@ class SquaresPlayerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to release square',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Leave a pool (before close and number assignment)
+     * POST /api/squares-pools/{poolId}/leave
+     */
+    public function leavePool($poolId)
+    {
+        $pool = SquaresPool::findOrFail($poolId);
+
+        // Check if pool is still open
+        if ($pool->pool_status !== 'open') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot leave pool after it has been closed'
+            ], 400);
+        }
+
+        // Check if numbers have been assigned
+        if ($pool->numbers_assigned) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot leave pool after numbers have been assigned'
+            ], 400);
+        }
+
+        // Check if user is in this pool
+        $playerRecord = SquaresPoolPlayer::where('pool_id', $poolId)
+            ->where('player_id', auth()->id())
+            ->first();
+
+        if (!$playerRecord) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You are not a member of this pool'
+            ], 404);
+        }
+
+        // Pool admin cannot leave their own pool
+        if ($pool->admin_id === auth()->id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Pool admin cannot leave their own pool'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Release all squares claimed by this player
+            SquaresPoolSquare::where('pool_id', $poolId)
+                ->where('player_id', auth()->id())
+                ->update([
+                    'player_id' => null,
+                    'claimed_at' => null,
+                ]);
+
+            // Delete the player record
+            $playerRecord->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Successfully left the pool'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to leave pool',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -450,5 +540,84 @@ class SquaresPlayerController extends Controller
             'message' => 'Credits added successfully',
             'data' => $playerRecord->fresh()
         ]);
+    }
+
+    /**
+     * Send pool closed notification emails to all players (when pool reaches 100 squares)
+     *
+     * @param SquaresPool $pool
+     */
+    private function sendPoolClosedNotifications(SquaresPool $pool)
+    {
+        try {
+            // Load pool with related data
+            $pool->load(['admin', 'homeTeam', 'visitorTeam', 'squares.player', 'players.player']);
+
+            $homeTeamName = $pool->homeTeam->name ?? 'Home Team';
+            $visitorTeamName = $pool->visitorTeam->name ?? 'Visitor Team';
+            $adminUsername = $pool->admin->username ?? $pool->admin->name ?? 'Pool Manager';
+            $totalSquaresFilled = $pool->squares->whereNotNull('player_id')->count();
+            $poolUrl = env('APP_FRONTEND_URL', env('APP_URL')) . '/squares/pool/' . $pool->id;
+
+            // Get x_numbers and y_numbers from pool (may be null if not assigned yet)
+            $xNumbers = $pool->x_numbers ?? [];
+            $yNumbers = $pool->y_numbers ?? [];
+            $numbersAssigned = $pool->numbers_assigned ?? false;
+
+            // Get all players who have claimed squares
+            $playersWithSquares = $pool->squares
+                ->whereNotNull('player_id')
+                ->groupBy('player_id');
+
+            foreach ($playersWithSquares as $playerId => $playerSquares) {
+                $player = $playerSquares->first()->player;
+
+                if (!$player || !$player->email) {
+                    continue;
+                }
+
+                // Get player's squares with assigned numbers (if available)
+                $squaresData = $playerSquares->map(function ($square) use ($xNumbers, $yNumbers, $numbersAssigned) {
+                    return [
+                        'x_number' => $numbersAssigned ? ($xNumbers[$square->x_coordinate] ?? $square->x_number ?? '?') : '?',
+                        'y_number' => $numbersAssigned ? ($yNumbers[$square->y_coordinate] ?? $square->y_number ?? '?') : '?',
+                        'x_coordinate' => $square->x_coordinate,
+                        'y_coordinate' => $square->y_coordinate,
+                    ];
+                })->values()->toArray();
+
+                // Get first square's numbers for example (if available)
+                $exampleX = $squaresData[0]['x_number'] ?? '?';
+                $exampleY = $squaresData[0]['y_number'] ?? '?';
+
+                $emailData = [
+                    'pool_name' => $pool->pool_name,
+                    'admin_username' => $adminUsername,
+                    'player_name' => $player->name ?? $player->username ?? 'Player',
+                    'player_email' => $player->email,
+                    'home_team' => $homeTeamName,
+                    'visitor_team' => $visitorTeamName,
+                    'squares_count' => count($squaresData),
+                    'player_squares' => $squaresData,
+                    'total_squares_filled' => $totalSquaresFilled,
+                    'pool_url' => $poolUrl,
+                    'example_x' => $exampleX,
+                    'example_y' => $exampleY,
+                    'numbers_assigned' => $numbersAssigned,
+                    'logo_url' => env('APP_FRONTEND_URL', env('APP_URL')) . '/img/v2_logo.png',
+                ];
+
+                // Send email
+                Mail::to($player->email)->send(new PoolClosedMail($emailData));
+            }
+
+            \Log::info('Pool closed emails sent for pool #' . $pool->id . ' (100 squares claimed)');
+        } catch (\Exception $e) {
+            // Log error but don't fail the main operation
+            \Log::error('Failed to send pool closed notification emails: ' . $e->getMessage(), [
+                'pool_id' => $pool->id,
+                'error' => $e->getTraceAsString()
+            ]);
+        }
     }
 }

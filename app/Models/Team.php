@@ -11,10 +11,12 @@ class Team extends Model
 
     protected $fillable = [
         'name',
+        'league',
         'nickname',
         'code',
         'conference',
-        'image_url'
+        'image_url',
+        'background_url'
     ];
 
     public function homeGames()

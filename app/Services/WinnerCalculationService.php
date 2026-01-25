@@ -44,15 +44,69 @@ class WinnerCalculationService
         $homeLastDigit = $homeScore % 10;
         $visitorLastDigit = $visitorScore % 10;
 
-        // Find which square wins
-        $winningSquare = $this->findWinningSquare($pool, $homeLastDigit, $visitorLastDigit);
+        // Find which square wins (using winning/losing team logic)
+        $winningSquare = $this->findWinningSquare($pool, $homeLastDigit, $visitorLastDigit, $homeScore, $visitorScore);
 
         if (!$winningSquare) {
             throw new \Exception('No winning square found');
         }
 
+        // Handle unclaimed square - still create a record with null player_id
         if (!$winningSquare->player_id) {
-            throw new \Exception('Winning square is not claimed by any player');
+            $homeTeam = $game->home_team->name ?? 'Home';
+            $visitorTeam = $game->visitor_team->name ?? 'Visitor';
+
+            // Create/update winner record with null player_id to track calculation
+            DB::beginTransaction();
+            try {
+                $existingWinner = SquaresPoolWinner::where('pool_id', $poolId)
+                    ->where('quarter', $quarter)
+                    ->first();
+
+                if ($existingWinner) {
+                    $existingWinner->update([
+                        'square_id' => $winningSquare->id,
+                        'player_id' => null, // Unclaimed
+                        'prize_amount' => 0,
+                        'home_score' => $homeScore,
+                        'visitor_score' => $visitorScore,
+                        'modify_user_id' => auth()->id(),
+                        'modify_date' => now()->toDateString(),
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    SquaresPoolWinner::create([
+                        'pool_id' => $poolId,
+                        'square_id' => $winningSquare->id,
+                        'player_id' => null, // Unclaimed
+                        'quarter' => $quarter,
+                        'prize_amount' => 0,
+                        'home_score' => $homeScore,
+                        'visitor_score' => $visitorScore,
+                        'winning_coordinates' => json_encode([
+                            'x' => $homeLastDigit,
+                            'y' => $visitorLastDigit,
+                        ]),
+                        'created_user_id' => auth()->id(),
+                        'created_date' => now()->toDateString(),
+                    ]);
+                }
+
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+            return [
+                'status' => false,
+                'message' => "Winning square (X:{$homeLastDigit}, Y:{$visitorLastDigit}) for {$homeTeam} {$homeScore} - {$visitorTeam} {$visitorScore} is not claimed by any player. No winner for this quarter.",
+                'winning_numbers' => [
+                    'home' => $homeLastDigit,
+                    'visitor' => $visitorLastDigit,
+                ],
+                'unclaimed' => true,
+            ];
         }
 
         // Calculate prize amount
@@ -113,25 +167,26 @@ class WinnerCalculationService
 
     /**
      * Get scores for a specific quarter
+     * Uses cumulative score fields (q1_home, half_home, q3_home, final_home) for Squares Pools
      */
     protected function getQuarterScores(Game $game, int $quarter)
     {
         switch ($quarter) {
             case 1:
-                return ($game->home_q1_score !== null && $game->visitor_q1_score !== null)
-                    ? [$game->home_q1_score, $game->visitor_q1_score]
+                return ($game->q1_home !== null && $game->q1_visitor !== null)
+                    ? [$game->q1_home, $game->q1_visitor]
                     : null;
             case 2:
-                return ($game->home_q2_score !== null && $game->visitor_q2_score !== null)
-                    ? [$game->home_q2_score, $game->visitor_q2_score]
+                return ($game->half_home !== null && $game->half_visitor !== null)
+                    ? [$game->half_home, $game->half_visitor]
                     : null;
             case 3:
-                return ($game->home_q3_score !== null && $game->visitor_q3_score !== null)
-                    ? [$game->home_q3_score, $game->visitor_q3_score]
+                return ($game->q3_home !== null && $game->q3_visitor !== null)
+                    ? [$game->q3_home, $game->q3_visitor]
                     : null;
             case 4:
-                return ($game->home_q4_score !== null && $game->visitor_q4_score !== null)
-                    ? [$game->home_q4_score, $game->visitor_q4_score]
+                return ($game->final_home !== null && $game->final_visitor !== null)
+                    ? [$game->final_home, $game->final_visitor]
                     : null;
             default:
                 return null;
@@ -140,17 +195,31 @@ class WinnerCalculationService
 
     /**
      * Find the winning square based on last digits
+     * X-axis = Winning team score (last digit)
+     * Y-axis = Losing team score (last digit)
      */
-    protected function findWinningSquare(SquaresPool $pool, int $homeLastDigit, int $visitorLastDigit)
+    protected function findWinningSquare(SquaresPool $pool, int $homeLastDigit, int $visitorLastDigit, int $homeScore, int $visitorScore)
     {
         $xNumbers = $pool->x_numbers;
         $yNumbers = $pool->y_numbers;
 
-        // Find X coordinate where x_number matches home last digit
-        $xCoordinate = array_search($homeLastDigit, $xNumbers);
+        // Determine winning and losing team scores
+        // X-axis = winning team, Y-axis = losing team
+        if ($homeScore >= $visitorScore) {
+            // Home team winning (or tie - home team on X-axis)
+            $winningLastDigit = $homeLastDigit;
+            $losingLastDigit = $visitorLastDigit;
+        } else {
+            // Visitor team winning
+            $winningLastDigit = $visitorLastDigit;
+            $losingLastDigit = $homeLastDigit;
+        }
 
-        // Find Y coordinate where y_number matches visitor last digit
-        $yCoordinate = array_search($visitorLastDigit, $yNumbers);
+        // Find X coordinate where x_number matches winning team last digit
+        $xCoordinate = array_search($winningLastDigit, $xNumbers);
+
+        // Find Y coordinate where y_number matches losing team last digit
+        $yCoordinate = array_search($losingLastDigit, $yNumbers);
 
         if ($xCoordinate === false || $yCoordinate === false) {
             return null;

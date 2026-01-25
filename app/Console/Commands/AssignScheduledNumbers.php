@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\SquaresPool;
 use App\Models\SquaresPoolSquare;
+use App\Services\PoolEmailService;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,7 @@ class AssignScheduledNumbers extends Command
                 $xNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
                 $yNumbers = collect(range(0, 9))->shuffle()->values()->toArray();
 
-                // Update pool with numbers
+                // Update pool with numbers (keep pool status unchanged - CloseExpiredPools handles closing)
                 $pool->update([
                     'x_numbers' => $xNumbers,
                     'y_numbers' => $yNumbers,
@@ -76,6 +77,17 @@ class AssignScheduledNumbers extends Command
 
                 $this->info("Assigned numbers for pool #{$pool->pool_number} - {$pool->pool_name}");
                 $assignedCount++;
+
+                // Send emails to all players with their assigned numbers
+                $emailService = new PoolEmailService();
+                $emailResult = $emailService->sendNumbersAssignedEmails($pool, $xNumbers, $yNumbers);
+
+                if ($emailResult['sent'] > 0) {
+                    $this->info("  → Sent {$emailResult['sent']} email(s) to players");
+                }
+                if ($emailResult['failed'] > 0) {
+                    $this->warn("  → Failed to send {$emailResult['failed']} email(s)");
+                }
 
             } catch (\Exception $e) {
                 DB::rollBack();

@@ -12,8 +12,15 @@ class TeamsSeeder extends Seeder
      * Run the database seeds.
      */
     public function run(): void
-    {
+        {
+        
+        // Disable foreign key checks
+        
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        
         Team::truncate();
+        
+        \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         $teams = [
             [
@@ -256,3 +263,4 @@ class TeamsSeeder extends Seeder
         }
     }
 }
+

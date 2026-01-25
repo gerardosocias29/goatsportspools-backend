@@ -46,11 +46,20 @@ class ContactUsController extends Controller
 
         $data['username'] = $user ? $user->username : "";
         $data['useremail'] = $user ? $user->email : "";
-        $data['subject'] = "GOAT Message from " . $data['name'];
+        $data['subject'] = "OKRNG Help Request from " . $data['name'];
         
         // Send an email or store the data
         try {
-            Mail::to(["goatadmin@goatsportspools.com", "MarkrMahomes@gmail.com", "titoysemail@yahoo.com", "gerardo@goatsportspools.com"])->send(new ContactUsMail($data));
+            // Get support emails from .env (comma-separated), fallback to default
+            $supportEmails = env('SUPPORT_EMAILS', 'gerardo@okrng.com,sports@okrng.com,okrngsports@gmail.com,g.socias29@gmail.com');
+            $recipients = array_map('trim', explode(',', $supportEmails));
+
+            // Send email to each recipient individually
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                    Mail::to($recipient)->send(new ContactUsMail($data));
+                }
+            }
 
             return response()->json([
                 'status' => true,

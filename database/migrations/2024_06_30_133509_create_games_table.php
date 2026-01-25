@@ -15,16 +15,16 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->softDeletes();
-            $table->timestamp('game_datetime');
-            $table->integer('time_zone');
-            $table->integer('league_id');
-            $table->integer('home_team_id');
-            $table->integer('visitor_team_id');
-            $table->string('location');
-            $table->string('city');
-            $table->string('state');
-            $table->integer('home_team_score');
-            $table->integer('visitor_team_score');
+            $table->timestamp('game_datetime')->nullable();
+            $table->integer('time_zone')->nullable();
+            $table->integer('league_id')->nullable();
+            $table->integer('home_team_id')->nullable();
+            $table->integer('visitor_team_id')->nullable();
+            $table->string('location')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->integer('home_team_score')->nullable();
+            $table->integer('visitor_team_score')->nullable();
         });
     }
 

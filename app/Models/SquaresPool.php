@@ -17,7 +17,9 @@ class SquaresPool extends Model
         'pool_number',
         'password',
         'pool_name',
+        'pool_description',
         'pool_type',
+        'numbers_type', // AdminTrigger, TimeSet, Ascending
         'player_pool_type',
         'home_team_id',
         'visitor_team_id',
@@ -25,6 +27,7 @@ class SquaresPool extends Model
         'y_numbers',
         'numbers_assigned',
         'entry_fee',
+        'custom_payout',
         'max_squares_per_player',
         'credit_cost',
         'initial_credits',
@@ -43,12 +46,20 @@ class SquaresPool extends Model
         'y_numbers' => 'array',
         'numbers_assigned' => 'boolean',
         'entry_fee' => 'decimal:2',
+        'custom_payout' => 'decimal:2',
         'reward1_percent' => 'decimal:2',
         'reward2_percent' => 'decimal:2',
         'reward3_percent' => 'decimal:2',
         'reward4_percent' => 'decimal:2',
         'close_datetime' => 'datetime',
         'number_assign_datetime' => 'datetime',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     */
+    protected $hidden = [
+        'password',
     ];
 
     /**
@@ -59,7 +70,6 @@ class SquaresPool extends Model
         do {
             $poolNumber = strtoupper(Str::random(6));
         } while (self::where('pool_number', $poolNumber)->exists());
-
         return $poolNumber;
     }
 
@@ -120,12 +130,26 @@ class SquaresPool extends Model
     }
 
     /**
+     * Get the game reward type for this pool
+     */
+    public function gameRewardType()
+    {
+        return $this->belongsTo(GameRewardType::class, 'game_reward_type_id');
+    }
+
+    /**
      * Get total pot for this pool
+     * Uses custom_payout if set, otherwise calculates from entry_fee * claimed squares
      */
     public function getTotalPotAttribute()
     {
-        $claimedSquares = $this->squares()->whereNotNull('player_id')->count();
-        return $this->entry_fee * $claimedSquares;
+        // Use custom payout if set (and greater than 0)
+        if ($this->custom_payout !== null && $this->custom_payout > 0) {
+            return $this->custom_payout;
+        }
+
+        // Otherwise calculate from entry fee * 100 squares (full pot)
+        return $this->entry_fee * 100;
     }
 
     /**

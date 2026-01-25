@@ -16,7 +16,7 @@ class QRCodeService
     public function generatePoolQRCode($poolNumber, $poolName)
     {
         // Create the join URL
-        $joinUrl = config('app.url') . "/v2/squares/join?pool={$poolNumber}";
+        $joinUrl = config('app.url') . "/squares/join?pool={$poolNumber}";
 
         // Generate QR code using Google Charts API (free, no dependencies needed)
         // Alternative: Use endroid/qr-code package if you want local generation
