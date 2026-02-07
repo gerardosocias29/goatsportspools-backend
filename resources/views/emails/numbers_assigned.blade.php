@@ -76,7 +76,7 @@
                                         <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #E97A2E; font-weight: 700;">Your Winning Numbers</p>
                                         <p style="margin: 0 0 16px 0; font-size: 52px; font-weight: 800; color: #101826; line-height: 1;">{{ $data['squares_count'] }} {{ $data['squares_count'] == 1 ? 'Square' : 'Squares' }}</p>
                                         <p style="margin: 0 0 20px 0; font-size: 14px; color: #555555;">
-                                            <strong style="color: #101826;">{{ $data['home_team'] }} vs {{ $data['visitor_team'] }}</strong>
+                                            <strong style="color: #101826;">{{ $data['visitor_team'] }} vs {{ $data['home_team'] }}</strong>
                                         </p>
 
                                         <!-- Number Pairs -->
@@ -99,7 +99,7 @@
                                         </table>
 
                                         <p style="margin: 16px 0 0 0; font-size: 13px; color: #888888; font-style: italic;">
-                                            Format: ({{ $data['home_team'] }} Score, {{ $data['visitor_team'] }} Score)
+                                            Format: ({{ $data['visitor_team'] }} Score, {{ $data['home_team'] }} Score)
                                         </p>
                                     </td>
                                 </tr>
@@ -116,7 +116,7 @@
                                         <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #B45309; font-weight: 700;">No Squares Claimed</p>
                                         <p style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #92400E; line-height: 1.3;">You haven't claimed any squares yet!</p>
                                         <p style="margin: 0 0 20px 0; font-size: 14px; color: #92400E;">
-                                            <strong style="color: #101826;">{{ $data['home_team'] }} vs {{ $data['visitor_team'] }}</strong>
+                                            <strong style="color: #101826;">{{ $data['visitor_team'] }} vs {{ $data['home_team'] }}</strong>
                                         </p>
                                         <p style="margin: 0; font-size: 15px; color: #78350F; line-height: 1.6;">
                                             Claim your squares now before the pool closes!
@@ -211,7 +211,7 @@
                                         </p>
                                         <p style="margin: 0; font-size: 14px; color: #444444; line-height: 1.7;">
                                             <strong>Example:</strong> If you have <strong>({{ $data['example_x'] }}, {{ $data['example_y'] }})</strong> and the score is
-                                            {{ $data['home_team'] }} {{ $data['example_x'] + 10 }} - {{ $data['visitor_team'] }} {{ $data['example_y'] + 20 }},
+                                            {{ $data['visitor_team'] }} {{ $data['example_y'] + 20 }} - {{ $data['home_team'] }} {{ $data['example_x'] + 10 }},
                                             you win because the last digits are {{ $data['example_x'] }} and {{ $data['example_y'] }}!
                                         </p>
                                     </td>

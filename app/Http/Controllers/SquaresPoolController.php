@@ -107,7 +107,8 @@ class SquaresPoolController extends Controller
      */
     public function show($id)
     {
-        $pool = SquaresPool::with([
+        // Support lookup by pool_number (non-numeric) or database ID (numeric)
+        $query = SquaresPool::with([
             'game',
             'homeTeam',
             'visitorTeam',
@@ -115,7 +116,11 @@ class SquaresPoolController extends Controller
             'squares.player',
             'players.player',
             'winners.player'
-        ])->findOrFail($id);
+        ]);
+
+        $pool = is_numeric($id)
+            ? $query->findOrFail($id)
+            : $query->where('pool_number', $id)->firstOrFail();
 
         // Check if current user has access to this pool
         $currentUserId = auth()->id();

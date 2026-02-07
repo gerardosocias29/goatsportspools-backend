@@ -98,7 +98,7 @@ class AuctionController extends Controller
         }
     }
 
-    public function setStreamUrl(Request $request, $auction_id) {
+    public function setStreamUrl(Request $request, $auctionId) {
         $request->validate([
             'stream_url' => 'required|url',
         ]);
@@ -108,7 +108,7 @@ class AuctionController extends Controller
             return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
         }
 
-        $auction = Auction::findOrFail($auction_id);
+        $auction = Auction::findOrFail($auctionId);
         $auction->update([
             'stream_url' => $request->stream_url,
             "status" => "live"
@@ -119,7 +119,7 @@ class AuctionController extends Controller
         PushNotification::notifyActiveAuction($auction);
         PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
 
-        $updatedCount = AuctionUser::where('auction_id', $auction_id)->update(['status' => 'away']);
+        $updatedCount = AuctionUser::where('auction_id', $auctionId)->update(['status' => 'away']);
         // broadcast(new AuctionStarted($auction));
 
         return response()->json(['status' => true, 'message' => 'Stream URL updated successfully', 'auction' => $auction], 200);
@@ -322,13 +322,37 @@ class AuctionController extends Controller
         ];
     }
 
-    public function endAuction($auction_id) {
+    public function startAuction($auctionId) {
         $user = Auth::user();
         if($user->role_id == 3) {
             return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
         }
 
-        $auction = Auction::where('id', $auction_id)->first();
+        $auction = Auction::where('id', $auctionId)->first();
+        if(!$auction) {
+            return response()->json(["status" => false, "message" => "Auction not found"]);
+        }
+
+        if($auction->is_finalized != 1) {
+            return response()->json(["status" => false, "message" => "Please finalize the team bracket first"]);
+        }
+
+        $auction->status = "live";
+        $auction->save();
+
+        PushNotification::notifyActiveAuction($auction);
+        PushNotification::notifyActiveAuction(["status" => true, "data" => $auction], $user->id);
+
+        return response()->json(["status" => true, "message" => "Auction Started", "auction" => $auction]);
+    }
+
+    public function endAuction($auctionId) {
+        $user = Auth::user();
+        if($user->role_id == 3) {
+            return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
+        }
+
+        $auction = Auction::where('id', $auctionId)->first();
         $auction->status = "pending";
         $auction->active_item_id = null;
         $auction->save();
@@ -339,13 +363,13 @@ class AuctionController extends Controller
         return response()->json(["status" => true, "message" => "Auction Ended"]);
     }
 
-    public function cancelAuction($auction_id) {
+    public function cancelAuction($auctionId) {
         $user = Auth::user();
         if($user->role_id == 3) {
             return response()->json(["status" => false, "message" => "You don't have enough permissions to proceed."]);
         }
 
-        $auction = Auction::where('id', $auction_id)->first();
+        $auction = Auction::where('id', $auctionId)->first();
         $auction->status = "pending";
         $auction->save();
 
@@ -357,10 +381,10 @@ class AuctionController extends Controller
         return response()->json(["status" => true, "message" => "Auction Cancelled"]);
     }
 
-    public function setAmounts(Request $request, $auction_id) {
+    public function setAmounts(Request $request, $auctionId) {
         $user_id = $request->user_id;
 
-        $auctionUser = AuctionUser::where('auction_id', $auction_id)->where('user_id', $user_id)->first();
+        $auctionUser = AuctionUser::where('auction_id', $auctionId)->where('user_id', $user_id)->first();
         if(!empty($auctionUser)) {
             $auctionUser->escrow_amount = $request->escrow_amount;
             $auctionUser->total_budget = $request->total_budget;
@@ -368,7 +392,7 @@ class AuctionController extends Controller
         } else {
             $auctionUser = new AuctionUser();
             $auctionUser->user_id = $user_id;
-            $auctionUser->auction_id = $auction_id;
+            $auctionUser->auction_id = $auctionId;
             $auctionUser->escrow_amount = $request->escrow_amount;
             $auctionUser->total_budget = $request->total_budget;
             $auctionUser->save();

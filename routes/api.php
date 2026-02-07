@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, BannerController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, BannerController, SettingsController, DashboardController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -41,6 +41,14 @@ Route::group(['middleware' => 'auth:api'], function () {
     // Your authenticated API routes here
     Route::get('/validate_token', [UserController::class, 'validate_token']);
     Route::get('/me_user', [UserController::class, 'me_user']);
+
+    // Dashboard Routes
+    Route::group(['prefix' => 'dashboard'], function () {
+        Route::get('/stats', [DashboardController::class, 'stats']);
+        Route::get('/winnings', [DashboardController::class, 'winnings']);
+        Route::get('/activity', [DashboardController::class, 'activity']);
+        Route::get('/active-pools', [DashboardController::class, 'activePools']);
+    });
 
     Route::group(['prefix' => 'user'], function () {
         Route::post('/update_profile', [UserController::class, 'update_profile']);
@@ -107,31 +115,40 @@ Route::group(['middleware' => 'auth:api'], function () {
     });
 
     Route::group(['prefix' => 'auctions'], function () {
+        // Static routes FIRST (no dynamic parameters)
         Route::get('/', [AuctionController::class, 'getAuctions']);
         Route::get('/all', [AuctionController::class, 'all']);
+        Route::get('/upcoming', [AuctionController::class, 'getUpcomingAuctions']);
+        Route::get('/live', [AuctionController::class, 'getLiveAuction']);
+        Route::get('/my-items', [AuctionController::class, 'getUserAuctionedItems']);
+        Route::post('/create', [AuctionController::class, 'create']);
+        Route::post('/remove-bid', [AuctionItemBidController::class, 'removeBid']);
+
+        // Single dynamic parameter routes
         Route::get('/{auctionId}/get-by-id', [AuctionController::class, 'getAuctionsById']);
         Route::get('/{auctionId}/join', [AuctionController::class, 'auctionJoin']);
         Route::get('/{auctionId}/members', [AuctionController::class, 'auctionMembers']);
         Route::get('/{auctionId}/users', [AuctionController::class, 'auctionUsers']);
-        
-        Route::post('/create', [AuctionController::class, 'create']);
-        Route::post('/{auction_id}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
-        Route::post('/{auction_id}/set-amounts', [AuctionController::class, 'setAmounts']);
-        Route::post('/{auction_id}/brackets', [AuctionItemController::class, 'storeBracket']);
+        Route::get('/{auctionId}/start', [AuctionController::class, 'startAuction']);
+        Route::get('/{auctionId}/end', [AuctionController::class, 'endAuction']);
+        Route::get('/{auctionId}/cancel', [AuctionController::class, 'cancelAuction']);
+        Route::post('/{auctionId}/set-stream-url', [AuctionController::class, 'setStreamUrl']);
+        Route::post('/{auctionId}/set-amounts', [AuctionController::class, 'setAmounts']);
+        Route::post('/{auctionId}/brackets', [AuctionItemController::class, 'storeBracket']);
 
-        Route::post('/{auction_id}/{item_id}/end-active-item', [AuctionController::class, 'end']);
+        // Two dynamic parameter routes (last - most specific path segments)
         Route::get('/{auction_id}/{item_id}/set-active-item', [AuctionController::class, 'setActiveItem']);
-        // Route::get('/{auction_id}/{ncaa_team_id}/get-auction-details', [AuctionController::class, 'getAuctionDetails']);
         Route::get('/{auction_id}/{item_id}/get-active-item', [AuctionController::class, 'getActiveItem']);
-        
-        Route::get('/{auction_id}/end', [AuctionController::class, 'endAuction']);
-        Route::get('/{auction_id}/cancel', [AuctionController::class, 'cancelAuction']);
-        Route::get('/upcoming', [AuctionController::class, 'getUpcomingAuctions']);
-        Route::get('/live', [AuctionController::class, 'getLiveAuction']);
-        Route::get('/my-items', [AuctionController::class, 'getUserAuctionedItems']);
-
-        Route::post('/remove-bid', [AuctionItemBidController::class, 'removeBid']);
+        Route::post('/{auction_id}/{item_id}/end-active-item', [AuctionController::class, 'end']);
         Route::post('/{auction_id}/{item_id}/bid', [AuctionItemBidController::class, 'placeBid']);
+    });
+
+    // App Settings Routes
+    Route::group(['prefix' => 'settings'], function () {
+        Route::get('/', [SettingsController::class, 'index']); // Get all settings (superadmin)
+        Route::get('/{key}', [SettingsController::class, 'get']); // Get a setting
+        Route::post('/{key}', [SettingsController::class, 'update']); // Update a setting
+        Route::post('/{key}/toggle', [SettingsController::class, 'toggle']); // Toggle a boolean setting
     });
 
     // Game Reward Types Routes

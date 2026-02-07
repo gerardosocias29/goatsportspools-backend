@@ -75,7 +75,7 @@
                                         <p style="margin: 0 0 16px 0; font-size: 52px; font-weight: 800; color: #101826; line-height: 1;">{{ $data['squares_count'] }}</p>
                                         <p style="margin: 0 0 20px 0; font-size: 14px; color: #555555;">
                                             Grid positions for<br>
-                                            <strong style="color: #101826;">{{ $data['home_team'] }} vs {{ $data['visitor_team'] }}</strong>
+                                            <strong style="color: #101826;">{{ $data['visitor_team'] }} vs {{ $data['home_team'] }}</strong>
                                         </p>
 
                                         <!-- Grid Positions -->
