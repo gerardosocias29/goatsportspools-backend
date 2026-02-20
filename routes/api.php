@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, BannerController, SettingsController, DashboardController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, BannerController, SettingsController, DashboardController, PayoutController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -54,6 +54,9 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/update_profile', [UserController::class, 'update_profile']);
         Route::post('/update_password', [UserController::class, 'update_password']);
         Route::post('/update_image', [UserController::class, 'update_image']);
+        Route::get('/payment-method', [PayoutController::class, 'getPaymentMethod']);
+        Route::put('/payment-method', [PayoutController::class, 'updatePaymentMethod']);
+        Route::get('/winnings', [PayoutController::class, 'getUserWinnings']);
     });
 
 
@@ -214,6 +217,12 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/', [SquaresAdminApplicationController::class, 'store']); // Submit new application
         Route::get('/', [SquaresAdminApplicationController::class, 'index']); // List all applications (Superadmin only)
         Route::patch('/{id}', [SquaresAdminApplicationController::class, 'update']); // Update application status (Superadmin only)
+    });
+
+    // Admin Payout Routes (Superadmin only)
+    Route::group(['prefix' => 'admin/payouts'], function () {
+        Route::get('/', [PayoutController::class, 'adminIndex']);
+        Route::post('/{winnerId}/mark-paid', [PayoutController::class, 'markAsPaid']);
     });
 
     // Banner Management Routes (Admin only)

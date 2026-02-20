@@ -115,7 +115,8 @@ class SquaresPoolController extends Controller
             'admin',
             'squares.player',
             'players.player',
-            'winners.player'
+            'winners.player',
+            'winners.square'
         ]);
 
         $pool = is_numeric($id)

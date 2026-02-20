@@ -17,6 +17,10 @@ class SquaresPoolWinner extends Model
         'prize_amount',
         'home_score',
         'visitor_score',
+        'is_paid',
+        'paid_at',
+        'proof_image',
+        'paid_by',
     ];
 
     protected $casts = [
@@ -24,6 +28,8 @@ class SquaresPoolWinner extends Model
         'prize_amount' => 'decimal:2',
         'home_score' => 'integer',
         'visitor_score' => 'integer',
+        'is_paid' => 'boolean',
+        'paid_at' => 'datetime',
     ];
 
     /**
@@ -48,5 +54,13 @@ class SquaresPoolWinner extends Model
     public function player()
     {
         return $this->belongsTo(User::class, 'player_id');
+    }
+
+    /**
+     * Get the admin who marked as paid
+     */
+    public function paidByUser()
+    {
+        return $this->belongsTo(User::class, 'paid_by');
     }
 }

@@ -41,7 +41,11 @@ class User extends Authenticatable implements JWTSubject
         'zipcode',
         'username',
         'role_id',
-        'clerk_id'
+        'clerk_id',
+        'payment_type',
+        'payment_account_name',
+        'payment_account_number',
+        'payment_bank_name',
     ];
 
     /**
