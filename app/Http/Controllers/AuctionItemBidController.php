@@ -21,16 +21,16 @@ class AuctionItemBidController extends Controller
             $userId = $request->user_id;
         }
 
-        // Escrow gate on bid (superadmin bypasses)
+        // Escrow gate on bid (superadmin bypasses) — user must have an auction_users record
         $biddingUserId = $userId;
         if ($user->role_id !== 1) {
             $auctionUser = AuctionUser::where('auction_id', $auction_id)
                 ->where('user_id', $biddingUserId)
                 ->first();
-            if (!$auctionUser || !$auctionUser->escrow_amount || $auctionUser->escrow_amount <= 0) {
+            if (!$auctionUser) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'You do not have escrow for this auction.',
+                    'message' => 'You are not assigned to this auction.',
                 ], 403);
             }
         }

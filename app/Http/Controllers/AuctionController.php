@@ -186,8 +186,7 @@ class AuctionController extends Controller
 
         if ($user->role_id !== 1) {
             $query->whereHas('joinedUsers', function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->where('escrow_amount', '>', 0);
+                $q->where('user_id', $user->id);
             });
         }
 
@@ -203,8 +202,7 @@ class AuctionController extends Controller
 
         if ($user->role_id !== 1) {
             $query->whereHas('joinedUsers', function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->where('escrow_amount', '>', 0);
+                $q->where('user_id', $user->id);
             });
         }
 
@@ -254,16 +252,16 @@ class AuctionController extends Controller
     public function auctionJoin($auctionId) {
         $user = Auth::user();
 
-        // Escrow gate (superadmin bypasses)
+        // Escrow gate (superadmin bypasses) — user must have an auction_users record to join
         if ($user->role_id !== 1) {
             $check = AuctionUser::where('auction_id', $auctionId)
                 ->where('user_id', $user->id)
                 ->first();
 
-            if (!$check || !$check->escrow_amount || $check->escrow_amount <= 0) {
+            if (!$check) {
                 return response()->json([
                     "status" => false,
-                    "message" => "You do not have escrow for this auction. Please contact the admin."
+                    "message" => "You are not assigned to this auction. Please contact the admin."
                 ], 403);
             }
         }
@@ -324,10 +322,9 @@ class AuctionController extends Controller
             }], 'sold_amount');
 
         if ($filter === 'escrow') {
-            // Only users with escrow > 0 for this auction
+            // Only users assigned to this auction (have an auction_users record)
             $usersAuction = $usersAuction->whereHas('auctions', function ($q) use ($auctionId) {
-                $q->where('auction_id', $auctionId)
-                  ->where('escrow_amount', '>', 0);
+                $q->where('auction_id', $auctionId);
             });
         } else {
             // 'all' mode - for admin "Add User" functionality
