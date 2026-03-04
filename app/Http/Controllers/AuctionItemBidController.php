@@ -15,13 +15,14 @@ class AuctionItemBidController extends Controller
 
         $user = Auth::user();
 
-        $userId = env('DEFAULT_ANONYMOUS_USER_ID', 1);
-        if($request->has('user_id')){
+        // Superadmin can bid on behalf of others via user_id param; regular users always use their own ID
+        $userId = $user->id;
+        if ($request->has('user_id') && $user->role_id === 1) {
             $userId = $request->user_id;
         }
 
         // Escrow gate on bid (superadmin bypasses)
-        $biddingUserId = $request->has('user_id') ? $request->user_id : $user->id;
+        $biddingUserId = $userId;
         if ($user->role_id !== 1) {
             $auctionUser = AuctionUser::where('auction_id', $auction_id)
                 ->where('user_id', $biddingUserId)
