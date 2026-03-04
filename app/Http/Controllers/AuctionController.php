@@ -180,13 +180,35 @@ class AuctionController extends Controller
 
     public function getUpcomingAuctions(Request $request)
     {
-        $auctions = Auction::where('status', 'pending')->with(['items.bids'])->get();
+        $user = Auth::user();
+
+        $query = Auction::where('status', 'pending')->with(['items.bids']);
+
+        if ($user->role_id !== 1) {
+            $query->whereHas('joinedUsers', function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->where('escrow_amount', '>', 0);
+            });
+        }
+
+        $auctions = $query->get();
         return response()->json($auctions);
     }
 
     public function getLiveAuction(Request $request)
     {
-        $liveAuction = Auction::where('status', 'live')->with(["items.bids"])->first();
+        $user = Auth::user();
+
+        $query = Auction::where('status', 'live')->with(["items.bids"]);
+
+        if ($user->role_id !== 1) {
+            $query->whereHas('joinedUsers', function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->where('escrow_amount', '>', 0);
+            });
+        }
+
+        $liveAuction = $query->first();
         return response()->json($liveAuction);
     }
 
@@ -232,6 +254,20 @@ class AuctionController extends Controller
     public function auctionJoin($auctionId) {
         $user = Auth::user();
 
+        // Escrow gate (superadmin bypasses)
+        if ($user->role_id !== 1) {
+            $check = AuctionUser::where('auction_id', $auctionId)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$check || !$check->escrow_amount || $check->escrow_amount <= 0) {
+                return response()->json([
+                    "status" => false,
+                    "message" => "You do not have escrow for this auction. Please contact the admin."
+                ], 403);
+            }
+        }
+
         $auctionUser = AuctionUser::where('auction_id', $auctionId)
         ->where('user_id', $user->id)
         ->first();
@@ -273,6 +309,8 @@ class AuctionController extends Controller
     }
 
     public function auctionUsers(Request $request, $auctionId) {
+        $filter = $request->input('filter', 'escrow');
+
         $usersAuction = User::with([
             'auctions' => function($query) use ($auctionId) {
                 $query->where('auction_id', $auctionId);
@@ -285,12 +323,20 @@ class AuctionController extends Controller
                 $query->where('auction_id', $auctionId);
             }], 'sold_amount');
 
-        if($request->has('query')){
-            $usersAuction = $usersAuction->where('id', '>', env('LAST_USER_ID', 30))->orderBy('id', 'ASC')->get();
+        if ($filter === 'escrow') {
+            // Only users with escrow > 0 for this auction
+            $usersAuction = $usersAuction->whereHas('auctions', function ($q) use ($auctionId) {
+                $q->where('auction_id', $auctionId)
+                  ->where('escrow_amount', '>', 0);
+            });
         } else {
-            $usersAuction = $usersAuction->get();
+            // 'all' mode - for admin "Add User" functionality
+            if ($request->has('query')) {
+                $usersAuction = $usersAuction->where('id', '>', env('LAST_USER_ID', 30));
+            }
         }
-       
+
+        $usersAuction = $usersAuction->orderBy('id', 'ASC')->get();
 
         return response()->json($usersAuction);
     }

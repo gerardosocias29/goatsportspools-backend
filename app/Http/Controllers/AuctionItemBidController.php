@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Auction, AuctionItem, AuctionItemBid};
+use App\Models\{Auction, AuctionItem, AuctionItemBid, AuctionUser};
 use Illuminate\Support\Facades\Auth;
 use App\CustomLibraries\PushNotification;
 
@@ -18,6 +18,20 @@ class AuctionItemBidController extends Controller
         $userId = env('DEFAULT_ANONYMOUS_USER_ID', 1);
         if($request->has('user_id')){
             $userId = $request->user_id;
+        }
+
+        // Escrow gate on bid (superadmin bypasses)
+        $biddingUserId = $request->has('user_id') ? $request->user_id : $user->id;
+        if ($user->role_id !== 1) {
+            $auctionUser = AuctionUser::where('auction_id', $auction_id)
+                ->where('user_id', $biddingUserId)
+                ->first();
+            if (!$auctionUser || !$auctionUser->escrow_amount || $auctionUser->escrow_amount <= 0) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You do not have escrow for this auction.',
+                ], 403);
+            }
         }
 
         $auctionItem = AuctionItem::where('id', $item_id)->where('auction_id', $auction_id)->firstOrFail();
