@@ -206,8 +206,8 @@ class AuctionController extends Controller
             });
         }
 
-        $liveAuction = $query->first();
-        return response()->json($liveAuction);
+        $liveAuctions = $query->get();
+        return response()->json($liveAuctions);
     }
 
     public function getUserAuctionedItems()
