@@ -13,7 +13,7 @@ use App\CustomLibraries\PushNotification;
 class AuctionController extends Controller
 {
     public function all(){
-        $auctions = Auction::with(['items.bids.user'])->get();
+        $auctions = Auction::with(['items.bids.user', 'items.owner', 'items.ncaa_team'])->get();
         return response()->json($auctions);
     }
 
