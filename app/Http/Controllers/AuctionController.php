@@ -371,10 +371,26 @@ class AuctionController extends Controller
 
     public function myBalance($auctionId) {
         $user = Auth::user();
+
+        // Superadmin has no budget limit
+        if ($user->role_id === 1) {
+            return response()->json([
+                'status' => true,
+                'total_budget' => null,
+                'total_spent' => 0,
+                'remaining_balance' => null,
+            ]);
+        }
+
         $result = self::getRemainingBalance($auctionId, $user->id);
 
         if (isset($result['error'])) {
-            return response()->json(['status' => false, 'message' => $result['error']], 404);
+            return response()->json([
+                'status' => true,
+                'total_budget' => null,
+                'total_spent' => 0,
+                'remaining_balance' => null,
+            ]);
         }
 
         return response()->json([
