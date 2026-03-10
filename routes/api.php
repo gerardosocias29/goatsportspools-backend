@@ -128,6 +128,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/remove-bid', [AuctionItemBidController::class, 'removeBid']);
 
         // Single dynamic parameter routes
+        Route::get('/{auctionId}/my-balance', [AuctionController::class, 'myBalance']);
         Route::get('/{auctionId}/get-by-id', [AuctionController::class, 'getAuctionsById']);
         Route::get('/{auctionId}/join', [AuctionController::class, 'auctionJoin']);
         Route::get('/{auctionId}/members', [AuctionController::class, 'auctionMembers']);

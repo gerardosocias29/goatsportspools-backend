@@ -369,6 +369,22 @@ class AuctionController extends Controller
         ];
     }
 
+    public function myBalance($auctionId) {
+        $user = Auth::user();
+        $result = self::getRemainingBalance($auctionId, $user->id);
+
+        if (isset($result['error'])) {
+            return response()->json(['status' => false, 'message' => $result['error']], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'total_budget' => $result['total_budget'],
+            'total_spent' => $result['total_sold_amount'] ?? 0,
+            'remaining_balance' => $result['remaining_balance'],
+        ]);
+    }
+
     public function startAuction($auctionId) {
         $user = Auth::user();
         if($user->role_id == 3) {
