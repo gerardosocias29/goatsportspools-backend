@@ -104,7 +104,7 @@ class AuctionController extends Controller
 
     public function setStreamUrl(Request $request, $auctionId) {
         $request->validate([
-            'stream_url' => 'required|url',
+            'stream_url' => 'nullable|url',
         ]);
 
         $user = Auth::user();
