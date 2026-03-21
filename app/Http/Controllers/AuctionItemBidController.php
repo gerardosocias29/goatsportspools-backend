@@ -76,23 +76,17 @@ class AuctionItemBidController extends Controller
                 'bid_amount' => $request->bid_amount,
             ]);
 
-            if($request->bid_amount > 100 && $request->bid_amount < 601){
-                $auctionItem->minimum_bid = 5;
-            } else if($request->bid_amount > 600 && $request->bid_amount < 3001) {
-                $auctionItem->minimum_bid = 10;
-            } else if($request->bid_amount > 3000 && $request->bid_amount < 9001) {
-                $auctionItem->minimum_bid = 30;
-            } else if($request->bid_amount > 9001 && $request->bid_amount < 20001) {
-                $auctionItem->minimum_bid = 50;
-            } else if($request->bid_amount > 20000) {
-                $auctionItem->minimum_bid = 100;
-            }
+            $auctionItem->minimum_bid = self::getMinimumBidIncrement($request->bid_amount);
 
             $auctionItem->save();
-    
+
             $bid->load('user');
 
-            PushNotification::notifyBid($bid);
+            // Include updated minimum_bid in the Pusher event so frontend can recalculate next bid
+            $bidData = $bid->toArray();
+            $bidData['minimum_bid'] = $auctionItem->minimum_bid;
+
+            PushNotification::notifyBid($bidData);
 
             return response()->json(['status' => true,'message' => 'Bid placed successfully', 'bid' => $bid]);
         }
@@ -120,19 +114,13 @@ class AuctionItemBidController extends Controller
 
         $auctionItem = AuctionItem::find($auctionItemId);
 
-        if($latestBid->bid_amount > 100 && $latestBid->bid_amount < 601){
-            $auctionItem->minimum_bid = 5;
-        } else if($latestBid->bid_amount > 600 && $latestBid->bid_amount < 3001) {
-            $auctionItem->minimum_bid = 10;
-        } else if($latestBid->bid_amount > 3000 && $latestBid->bid_amount < 9001) {
-            $auctionItem->minimum_bid = 30;
-        } else if($latestBid->bid_amount > 9000 && $latestBid->bid_amount < 20001) {
-            $auctionItem->minimum_bid = 50;
-        } else if($latestBid->bid_amount > 20000) {
-            $auctionItem->minimum_bid = 100;
+        if ($latestBid) {
+            $auctionItem->minimum_bid = self::getMinimumBidIncrement($latestBid->bid_amount);
+        } else {
+            $auctionItem->minimum_bid = 1;
         }
         $auctionItem->save();
-    
+
         if ($latestBid) {
             $latestBid->load('user');
             PushNotification::notifyBid($latestBid);
@@ -143,5 +131,15 @@ class AuctionItemBidController extends Controller
             'message' => 'Bid removed successfully',
             'latest_bid' => $latestBid
         ]);
+    }
+
+    private static function getMinimumBidIncrement($bidAmount)
+    {
+        if ($bidAmount > 20000) return 100;
+        if ($bidAmount > 9000) return 50;
+        if ($bidAmount > 3000) return 30;
+        if ($bidAmount > 600) return 10;
+        if ($bidAmount > 100) return 5;
+        return 1;
     }
 }
