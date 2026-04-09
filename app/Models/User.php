@@ -46,6 +46,7 @@ class User extends Authenticatable implements JWTSubject
         'payment_account_name',
         'payment_account_number',
         'payment_bank_name',
+        'is_playoff_admin',
     ];
 
     /**
@@ -66,6 +67,7 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_playoff_admin' => 'boolean',
     ];
 
     public function role() {

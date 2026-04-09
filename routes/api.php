@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, BannerController, SettingsController, DashboardController, PayoutController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, PlayoffAdminApplicationController, PlayoffPoolController, PlayoffBracketController, PlayoffAdminController, BannerController, SettingsController, DashboardController, PayoutController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -220,6 +220,56 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::patch('/{id}', [SquaresAdminApplicationController::class, 'update']); // Update application status (Superadmin only)
     });
 
+    // Playoff Admin Applications Routes
+    Route::group(['prefix' => 'playoff-admin-applications'], function () {
+        Route::get('/my-status', [PlayoffAdminApplicationController::class, 'myStatus']); // Get current user's playoff application status
+        Route::post('/', [PlayoffAdminApplicationController::class, 'store']); // Submit new playoff application
+        Route::get('/', [PlayoffAdminApplicationController::class, 'index']); // List all playoff applications (Superadmin only)
+        Route::patch('/{id}', [PlayoffAdminApplicationController::class, 'update']); // Update playoff application status (Superadmin only)
+    });
+
+    // Playoff Pools Routes
+    Route::group(['prefix' => 'playoff-pools'], function () {
+        // Static routes BEFORE dynamic
+        Route::get('/list', [PlayoffPoolController::class, 'index']); // List user's pools (superadmin sees all)
+        Route::post('/join', [PlayoffPoolController::class, 'join']); // Join pool
+        Route::get('/{id}/standings', [PlayoffPoolController::class, 'standings']); // Pool standings
+        Route::get('/{id}', [PlayoffPoolController::class, 'show']); // Get pool by ID or pool_number
+
+        // Brackets (nested under pool)
+        Route::get('/{id}/brackets', [PlayoffBracketController::class, 'index']); // List user's brackets
+        Route::post('/{id}/brackets', [PlayoffBracketController::class, 'store']); // Create bracket
+        Route::get('/{id}/brackets/{bracketId}', [PlayoffBracketController::class, 'show']); // Show bracket + picks
+        Route::put('/{id}/brackets/{bracketId}', [PlayoffBracketController::class, 'update']); // Rename bracket
+        Route::post('/{id}/brackets/{bracketId}/picks', [PlayoffBracketController::class, 'savePicks']); // Upsert picks
+        Route::post('/{id}/brackets/{bracketId}/finalize', [PlayoffBracketController::class, 'finalize']); // Finalize bracket
+    });
+
+    // Admin Playoff Routes (Superadmin only, enforced in controller)
+    Route::group(['prefix' => 'admin/playoffs'], function () {
+        // Static routes BEFORE dynamic
+        Route::post('/create', [PlayoffAdminController::class, 'createPlayoff']); // Create playoff year
+        Route::post('/pools', [PlayoffAdminController::class, 'createPool']); // Create playoff pool
+        Route::get('/nba-teams', [PlayoffAdminController::class, 'listNbaTeams']); // List NBA teams for selection
+        Route::get('/', [PlayoffAdminController::class, 'listPlayoffs']); // List all playoffs
+
+        // Pool management by pool_number
+        Route::post('/pools/{poolNumber}/lock', [PlayoffAdminController::class, 'lockPool']);
+        Route::post('/pools/{poolNumber}/recalculate', [PlayoffAdminController::class, 'recalculatePool']);
+
+        // Dynamic routes — more specific sub-paths first
+        Route::post('/{id}/teams', [PlayoffAdminController::class, 'saveTeams']); // Save teams for a playoff
+        Route::get('/{id}/summary', [PlayoffAdminController::class, 'roundSummary']); // Round summary
+        Route::post('/{id}/results/bulk', [PlayoffAdminController::class, 'bulkUpdateResults']); // Enter round results
+        Route::post('/{id}/results/clear', [PlayoffAdminController::class, 'clearResult']); // Clear a result
+        Route::post('/{id}/results', [PlayoffAdminController::class, 'updateResult']); // Enter single result
+        Route::post('/{id}/score-all', [PlayoffAdminController::class, 'scoreAll']); // Rescore all rounds
+        Route::post('/{id}/score', [PlayoffAdminController::class, 'scoreRound']); // Score a round
+        Route::get('/{id}/global-standings', [PlayoffAdminController::class, 'globalStandings']); // Global standings across all pools
+        Route::get('/{id}/standings/{poolId}', [PlayoffAdminController::class, 'poolStandings']); // Pool standings
+        Route::get('/{id}', [PlayoffAdminController::class, 'showPlayoff']); // Show single playoff
+    });
+
     // Admin Payout Routes (Superadmin only)
     Route::group(['prefix' => 'admin/payouts'], function () {
         Route::get('/', [PayoutController::class, 'adminIndex']);
@@ -239,6 +289,9 @@ Route::group(['middleware' => 'auth:api'], function () {
 
 // Squares Pools Public Routes (No Auth Required)
 Route::get('/squares-pools/by-number/{poolNumber}', [SquaresPlayerController::class, 'getPoolByNumber']); // Get pool by number (public)
+
+// Playoff Pools Public Routes (No Auth Required)
+Route::get('/playoff-pools/by-number/{poolNumber}', [PlayoffPoolController::class, 'lookupByNumber']); // Lookup pool by number (public)
 
 // Banners Public Route (No Auth Required)
 Route::get('/banners', [BannerController::class, 'index']); // Get active banners for display
