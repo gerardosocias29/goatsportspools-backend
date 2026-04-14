@@ -40,11 +40,12 @@ class PlayoffScoringService
         // Find all pools for this playoff
         $poolIds = PlayoffPool::where('playoff_id', $playoffId)->pluck('id');
 
-        // Find all finalized brackets in those pools
+        // Only score PAID + finalized brackets (PAID = officially entered in pool)
         $brackets = PlayoffBracket::whereHas('participant', function ($q) use ($poolIds) {
             $q->whereIn('pool_id', $poolIds);
         })
             ->where('status', 'finalized')
+            ->where('is_paid', true)
             ->pluck('id');
 
         // Get all picks for this round across those brackets

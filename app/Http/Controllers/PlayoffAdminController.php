@@ -362,43 +362,21 @@ class PlayoffAdminController extends Controller
             ->where('playoff_id', $playoffId)
             ->firstOrFail();
 
-        $participants = $pool->participants()
-            ->with(['user:id,name,email,image_url', 'brackets.picks'])
+        // Per-bracket rows: only PAID brackets appear in standings
+        $brackets = \App\Models\PlayoffBracket::whereHas('participant', function ($q) use ($pool) {
+                $q->where('pool_id', $pool->id);
+            })
+            ->where('is_paid', true)
+            ->with(['participant.user:id,name,username,avatar,image_url', 'picks'])
             ->orderByDesc('total_points')
             ->get()
-            ->map(function ($p) {
-                return [
-                    'participant_id' => $p->id,
-                    'user' => $p->user,
-                    'total_points' => $p->total_points,
-                    'brackets_count' => $p->brackets_count,
-                    'brackets' => $p->brackets->map(function ($b) {
-                        $picksByRound = $b->picks->groupBy('round')->map(function ($roundPicks, $round) {
-                            return [
-                                'correct' => $roundPicks->filter(fn($p) => $p->base_points > 0)->count(),
-                                'total' => $roundPicks->count(),
-                                'base_points' => $roundPicks->sum('base_points'),
-                                'games_bonus' => $roundPicks->sum('games_bonus'),
-                                'seed_bonus' => $roundPicks->sum('seed_bonus'),
-                            ];
-                        });
-
-                        return [
-                            'bracket_id' => $b->id,
-                            'bracket_name' => $b->bracket_name,
-                            'status' => $b->status,
-                            'total_points' => $b->total_points,
-                            'rounds' => $picksByRound,
-                        ];
-                    }),
-                ];
-            });
+            ->map(fn($b) => $this->bracketStandingRow($b, $pool));
 
         return response()->json([
             'status' => true,
             'data' => [
                 'pool' => $pool->only(['id', 'pool_name', 'pool_number', 'pool_status']),
-                'standings' => $participants,
+                'standings' => $brackets,
             ],
         ]);
     }
@@ -414,48 +392,63 @@ class PlayoffAdminController extends Controller
 
         $playoff = NbaPlayoff::findOrFail($playoffId);
 
-        $pools = PlayoffPool::where('playoff_id', $playoffId)
-            ->with(['participants' => function ($q) {
-                $q->with(['user:id,name,avatar,username', 'brackets.picks'])
-                    ->orderByDesc('total_points');
-            }])
-            ->get();
+        $poolIds = PlayoffPool::where('playoff_id', $playoffId)->pluck('id');
+        $poolsById = PlayoffPool::whereIn('id', $poolIds)->get()->keyBy('id');
 
-        $allParticipants = collect();
-
-        foreach ($pools as $pool) {
-            foreach ($pool->participants as $p) {
-                $bestBracket = $p->brackets->sortByDesc('total_points')->first();
-
-                $allParticipants->push([
-                    'participant_id' => $p->id,
-                    'user' => $p->user,
-                    'pool_id' => $pool->id,
-                    'pool_name' => $pool->pool_name,
-                    'pool_number' => $pool->pool_number,
-                    'total_points' => $p->total_points,
-                    'brackets_count' => $p->brackets_count,
-                    'best_bracket' => $bestBracket ? [
-                        'bracket_id' => $bestBracket->id,
-                        'bracket_name' => $bestBracket->bracket_name,
-                        'total_points' => $bestBracket->total_points,
-                        'status' => $bestBracket->status,
-                    ] : null,
-                ]);
-            }
-        }
-
-        $sorted = $allParticipants->sortByDesc('total_points')->values();
+        // Per-bracket rows across all pools — only PAID brackets
+        $rows = \App\Models\PlayoffBracket::whereHas('participant', function ($q) use ($poolIds) {
+                $q->whereIn('pool_id', $poolIds);
+            })
+            ->where('is_paid', true)
+            ->with(['participant.user:id,name,username,avatar,image_url', 'picks'])
+            ->orderByDesc('total_points')
+            ->get()
+            ->map(function ($b) use ($poolsById) {
+                $pool = $poolsById->get($b->participant->pool_id);
+                return $this->bracketStandingRow($b, $pool);
+            })
+            ->values();
 
         return response()->json([
             'status' => true,
             'data' => [
                 'playoff' => $playoff->only(['id', 'year', 'name', 'status', 'current_round']),
-                'pools_count' => $pools->count(),
-                'participants_count' => $sorted->count(),
-                'standings' => $sorted,
+                'pools_count' => $poolIds->count(),
+                'participants_count' => $rows->pluck('user.id')->unique()->count(),
+                'brackets_count' => $rows->count(),
+                'standings' => $rows,
             ],
         ]);
+    }
+
+    /**
+     * Shared per-bracket standings row shape.
+     */
+    private function bracketStandingRow(\App\Models\PlayoffBracket $b, $pool = null): array
+    {
+        $rounds = $b->picks->groupBy('round')->map(function ($roundPicks) {
+            return [
+                'correct' => $roundPicks->filter(fn($p) => $p->base_points > 0)->count(),
+                'total' => $roundPicks->count(),
+                'base_points' => $roundPicks->sum('base_points'),
+                'games_bonus' => $roundPicks->sum('games_bonus'),
+                'seed_bonus' => $roundPicks->sum('seed_bonus'),
+            ];
+        });
+
+        return [
+            'bracket_id' => $b->id,
+            'bracket_name' => $b->bracket_name,
+            'status' => $b->status,
+            'is_paid' => (bool) $b->is_paid,
+            'total_points' => (int) $b->total_points,
+            'rounds' => $rounds,
+            'user' => $b->participant?->user,
+            'participant_id' => $b->participant_id,
+            'pool_id' => $pool?->id,
+            'pool_name' => $pool?->pool_name,
+            'pool_number' => $pool?->pool_number,
+        ];
     }
 
     // ─── Playoff Year + Team Setup ──────────────────────────
@@ -586,16 +579,200 @@ class PlayoffAdminController extends Controller
 
         $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
 
+        if (!$pool->playoff_id) {
+            return response()->json(['status' => false, 'message' => 'Pool is not linked to a playoff year.'], 422);
+        }
+
         $service = new PlayoffScoringService();
         $results = $service->scoreAll($pool->playoff_id);
 
-        $totalScored = array_sum(array_column($results, 'picks_scored'));
-        $totalCorrect = array_sum(array_column($results, 'correct'));
+        // Count finalized brackets in this pool
+        $bracketsCount = \App\Models\PlayoffBracket::whereHas('participant', function ($q) use ($pool) {
+            $q->where('pool_id', $pool->id);
+        })->where('status', 'finalized')->count();
+
+        // Per-round summary: "R1: 3/4 correct" etc.
+        $roundSummary = [];
+        foreach ($results as $r) {
+            if ($r['picks_scored'] > 0) {
+                $roundSummary[] = "R{$r['round']}: {$r['correct']}/{$r['picks_scored']} correct";
+            }
+        }
+
+        $message = $bracketsCount === 0
+            ? 'No finalized brackets found to score.'
+            : "Scores recalculated for {$bracketsCount} bracket(s). " . implode(', ', $roundSummary);
 
         return response()->json([
             'status' => true,
-            'message' => "Scores recalculated: {$totalCorrect} correct picks out of {$totalScored} total.",
+            'message' => $message,
             'data' => $results,
+        ]);
+    }
+
+    /**
+     * Update a playoff (name, year, status).
+     *
+     * PATCH /api/admin/playoffs/{id}
+     */
+    public function updatePlayoff(Request $request, $id)
+    {
+        $this->requireSuperadmin();
+
+        $playoff = NbaPlayoff::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:100',
+            'year' => 'sometimes|integer|min:2020|max:2040',
+            'status' => 'sometimes|in:upcoming,in_progress,completed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $playoff->update($request->only(['name', 'year', 'status']));
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Playoff updated.',
+            'data' => $playoff->fresh(),
+        ]);
+    }
+
+    /**
+     * Archive (soft delete) a playoff.
+     *
+     * DELETE /api/admin/playoffs/{id}
+     */
+    public function deletePlayoff($id)
+    {
+        $this->requireSuperadmin();
+
+        $playoff = NbaPlayoff::findOrFail($id);
+        $playoff->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Playoff archived.',
+        ]);
+    }
+
+    /**
+     * Update a pool's editable fields.
+     *
+     * PATCH /api/admin/playoffs/pools/{poolNumber}
+     */
+    public function updatePool(Request $request, $poolNumber)
+    {
+        $this->requireAdmin();
+
+        $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
+
+        $validator = Validator::make($request->all(), [
+            'pool_name' => 'sometimes|string|max:150',
+            'pool_description' => 'sometimes|nullable|string',
+            'initial_credits' => 'sometimes|integer|min:0',
+            'credit_cost_per_bracket' => 'sometimes|integer|min:0',
+            'max_brackets_per_user' => 'sometimes|integer|min:1|max:50',
+            'close_datetime' => 'sometimes|nullable|date',
+            'password' => 'sometimes|nullable|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $pool->update($request->only([
+            'pool_name', 'pool_description', 'initial_credits',
+            'credit_cost_per_bracket', 'max_brackets_per_user',
+            'close_datetime', 'password',
+        ]));
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pool updated.',
+            'data' => $pool->fresh(),
+        ]);
+    }
+
+    /**
+     * List brackets in a pool (admin).
+     *
+     * GET /api/admin/playoffs/pools/{poolNumber}/brackets
+     */
+    public function listPoolBrackets($poolNumber)
+    {
+        $this->requireAdmin();
+
+        $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
+
+        $brackets = \App\Models\PlayoffBracket::whereHas('participant', function ($q) use ($pool) {
+            $q->where('pool_id', $pool->id);
+        })
+        ->with(['participant.user:id,name,username,avatar'])
+        ->orderByDesc('is_paid')
+        ->orderByDesc('total_points')
+        ->get();
+
+        return response()->json(['status' => true, 'data' => $brackets]);
+    }
+
+    /**
+     * Toggle PAID on a bracket. Only PAID brackets appear in standings.
+     *
+     * PATCH /api/admin/playoffs/brackets/{bracketId}/paid
+     * Body: { is_paid: true|false }
+     */
+    public function toggleBracketPaid(Request $request, $bracketId)
+    {
+        $this->requireAdmin();
+
+        $validator = Validator::make($request->all(), [
+            'is_paid' => 'required|boolean',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $bracket = \App\Models\PlayoffBracket::findOrFail($bracketId);
+
+        if ($request->boolean('is_paid')) {
+            $bracket->update([
+                'is_paid' => true,
+                'paid_at' => now(),
+                'paid_by_admin_id' => Auth::id(),
+            ]);
+        } else {
+            $bracket->update([
+                'is_paid' => false,
+                'paid_at' => null,
+                'paid_by_admin_id' => null,
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => $bracket->is_paid ? 'Bracket marked as PAID.' : 'Bracket marked as unpaid.',
+            'data' => $bracket->fresh(),
+        ]);
+    }
+
+    /**
+     * Delete (soft) a pool.
+     *
+     * DELETE /api/admin/playoffs/pools/{poolNumber}
+     */
+    public function deletePool($poolNumber)
+    {
+        $this->requireSuperadmin();
+
+        $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
+        $pool->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pool deleted.',
         ]);
     }
 

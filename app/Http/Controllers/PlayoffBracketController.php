@@ -50,7 +50,15 @@ class PlayoffBracketController extends Controller
             return response()->json(['status' => false, 'message' => 'Insufficient credits.'], 400);
         }
 
-        $nextIndex = $participant->brackets_count + 1;
+        // Monotonic bracket_index — never reuse (considers soft-deleted too)
+        $maxIndex = PlayoffBracket::withTrashed()
+            ->where('participant_id', $participant->id)
+            ->max('bracket_index') ?? 0;
+        $nextIndex = $maxIndex + 1;
+
+        // Default name: {username}{N}, auto-advancing N until globally unique
+        $username = Auth::user()->username ?? 'player';
+        $bracketName = $this->generateUniqueBracketName($username, $nextIndex);
 
         DB::beginTransaction();
         try {
@@ -61,7 +69,7 @@ class PlayoffBracketController extends Controller
 
             $bracket = PlayoffBracket::create([
                 'participant_id' => $participant->id,
-                'bracket_name' => "Bracket {$nextIndex}",
+                'bracket_name' => $bracketName,
                 'bracket_index' => $nextIndex,
                 'status' => 'draft',
             ]);
@@ -81,23 +89,52 @@ class PlayoffBracketController extends Controller
 
     /**
      * Show a single bracket with picks.
+     *
+     * - Owner or superadmin can always view.
+     * - Other pool participants can view once pool is locked / past close_datetime
+     *   (NBA-0010: let users see each other's brackets after the deadline).
      */
     public function show($poolId, $bracketId)
     {
         $pool = $this->findPool($poolId);
-        $participant = $this->requireParticipant($pool);
-        if ($participant instanceof \Illuminate\Http\JsonResponse) return $participant;
+        $user = Auth::user();
+        $isSuperadmin = $user && $user->role_id === 1;
 
         $bracket = PlayoffBracket::where('id', $bracketId)
-            ->where('participant_id', $participant->id)
-            ->with('picks.pickedTeam:id,name,nickname,image_url,conference')
+            ->with(['picks.pickedTeam:id,name,nickname,image_url,conference',
+                'participant.user:id,name,username,avatar,image_url'])
             ->firstOrFail();
+
+        // Verify bracket belongs to this pool
+        if (!$bracket->participant || $bracket->participant->pool_id !== $pool->id) {
+            abort(404);
+        }
+
+        $isOwner = $user && $bracket->participant->user_id === $user->id;
+
+        if (!$isOwner && !$isSuperadmin) {
+            // Must be a participant of the pool
+            $isParticipant = $user && $pool->participants()->where('user_id', $user->id)->exists();
+            if (!$isParticipant) {
+                return response()->json(['status' => false, 'message' => 'You must join this pool first.'], 403);
+            }
+            // And pool must be past its reveal gate
+            $locked = $pool->locked_at !== null
+                || ($pool->pool_status ?? null) === 'locked'
+                || ($pool->close_datetime && now()->gte($pool->close_datetime));
+            if (!$locked) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Other brackets are hidden until the pool is locked.',
+                ], 403);
+            }
+        }
 
         return response()->json(['status' => true, 'data' => $bracket]);
     }
 
     /**
-     * Rename a bracket.
+     * Rename a bracket. Name must be globally unique.
      */
     public function update(Request $request, $poolId, $bracketId)
     {
@@ -108,7 +145,13 @@ class PlayoffBracketController extends Controller
         $bracket = PlayoffBracket::where('id', $bracketId)->where('participant_id', $participant->id)->firstOrFail();
 
         $request->validate(['bracket_name' => 'required|string|max:50']);
-        $bracket->update(['bracket_name' => $request->bracket_name]);
+
+        $name = trim($request->bracket_name);
+        if ($this->bracketNameExists($name, $bracket->id)) {
+            return response()->json(['status' => false, 'message' => 'That bracket name is already taken.'], 422);
+        }
+
+        $bracket->update(['bracket_name' => $name]);
 
         return response()->json(['status' => true, 'data' => $bracket]);
     }
@@ -196,8 +239,9 @@ class PlayoffBracketController extends Controller
 
     /**
      * Finalize a bracket (locks it permanently).
+     * Optionally accepts bracket_name to rename the bracket as part of finalizing.
      */
-    public function finalize($poolId, $bracketId)
+    public function finalize(Request $request, $poolId, $bracketId)
     {
         $pool = $this->findPool($poolId);
         $participant = $this->requireParticipant($pool);
@@ -211,6 +255,16 @@ class PlayoffBracketController extends Controller
 
         if ($bracket->status === 'finalized') {
             return response()->json(['status' => false, 'message' => 'Already finalized.'], 400);
+        }
+
+        // Optional rename at finalize time
+        if ($request->filled('bracket_name')) {
+            $request->validate(['bracket_name' => 'string|max:50']);
+            $name = trim($request->bracket_name);
+            if ($this->bracketNameExists($name, $bracket->id)) {
+                return response()->json(['status' => false, 'message' => 'That bracket name is already taken.'], 422);
+            }
+            $bracket->bracket_name = $name;
         }
 
         $picks = $bracket->picks;
@@ -232,10 +286,9 @@ class PlayoffBracketController extends Controller
             return response()->json(['status' => false, 'message' => $capsError], 422);
         }
 
-        $bracket->update([
-            'status' => 'finalized',
-            'finalized_at' => now(),
-        ]);
+        $bracket->status = 'finalized';
+        $bracket->finalized_at = now();
+        $bracket->save();
 
         return response()->json([
             'status' => true,
@@ -245,6 +298,30 @@ class PlayoffBracketController extends Controller
     }
 
     // ─── Helpers ──────────────────────────────────────────────
+
+    /**
+     * Generate a unique bracket name by appending incrementing suffix if base is taken.
+     * e.g. "gerardo3" → if taken → "gerardo3-2", "gerardo3-3", ...
+     */
+    private function generateUniqueBracketName($username, $index)
+    {
+        $base = "{$username}{$index}";
+        if (!$this->bracketNameExists($base)) return $base;
+
+        $i = 2;
+        while ($this->bracketNameExists("{$base}-{$i}")) {
+            $i++;
+            if ($i > 9999) break;
+        }
+        return "{$base}-{$i}";
+    }
+
+    private function bracketNameExists($name, $exceptId = null)
+    {
+        $q = PlayoffBracket::where('bracket_name', $name);
+        if ($exceptId) $q->where('id', '!=', $exceptId);
+        return $q->exists();
+    }
 
     private function findPool($id)
     {

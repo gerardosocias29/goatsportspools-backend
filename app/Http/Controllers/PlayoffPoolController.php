@@ -159,51 +159,41 @@ class PlayoffPoolController extends Controller
             return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
         }
 
-        $participants = $pool->participants()
-            ->with(['user:id,name,avatar,username', 'brackets.picks'])
-            ->get()
-            ->map(function ($p) {
-                $bestBracket = $p->brackets->sortByDesc('total_points')->first();
-                return [
-                    'participant_id' => $p->id,
-                    'user' => $p->user,
-                    'total_points' => $p->total_points,
-                    'brackets_count' => $p->brackets_count,
-                    'best_bracket' => $bestBracket ? [
-                        'bracket_id' => $bestBracket->id,
-                        'bracket_name' => $bestBracket->bracket_name,
-                        'total_points' => $bestBracket->total_points,
-                        'status' => $bestBracket->status,
-                    ] : null,
-                    'brackets' => $p->brackets->map(function ($b) {
-                        $picksByRound = $b->picks->groupBy('round')->map(function ($roundPicks) {
-                            return [
-                                'correct' => $roundPicks->filter(fn($pick) => $pick->base_points > 0)->count(),
-                                'total' => $roundPicks->count(),
-                                'base_points' => $roundPicks->sum('base_points'),
-                                'games_bonus' => $roundPicks->sum('games_bonus'),
-                                'seed_bonus' => $roundPicks->sum('seed_bonus'),
-                            ];
-                        });
-
-                        return [
-                            'bracket_id' => $b->id,
-                            'bracket_name' => $b->bracket_name,
-                            'status' => $b->status,
-                            'total_points' => $b->total_points,
-                            'rounds' => $picksByRound,
-                        ];
-                    }),
-                ];
+        // Per-bracket rows — only PAID brackets appear in standings
+        $standings = \App\Models\PlayoffBracket::whereHas('participant', function ($q) use ($pool) {
+                $q->where('pool_id', $pool->id);
             })
-            ->sortByDesc('total_points')
-            ->values();
+            ->where('is_paid', true)
+            ->with(['participant.user:id,name,username,avatar,image_url', 'picks'])
+            ->orderByDesc('total_points')
+            ->get()
+            ->map(function ($b) {
+                $rounds = $b->picks->groupBy('round')->map(function ($roundPicks) {
+                    return [
+                        'correct' => $roundPicks->filter(fn($pick) => $pick->base_points > 0)->count(),
+                        'total' => $roundPicks->count(),
+                        'base_points' => $roundPicks->sum('base_points'),
+                        'games_bonus' => $roundPicks->sum('games_bonus'),
+                        'seed_bonus' => $roundPicks->sum('seed_bonus'),
+                    ];
+                });
+                return [
+                    'bracket_id' => $b->id,
+                    'bracket_name' => $b->bracket_name,
+                    'status' => $b->status,
+                    'is_paid' => (bool) $b->is_paid,
+                    'total_points' => (int) $b->total_points,
+                    'rounds' => $rounds,
+                    'user' => $b->participant?->user,
+                    'participant_id' => $b->participant_id,
+                ];
+            });
 
         return response()->json([
             'status' => true,
             'data' => [
-                'pool' => $pool->only(['id', 'pool_name', 'pool_number', 'pool_status']),
-                'standings' => $participants,
+                'pool' => $pool->only(['id', 'pool_name', 'pool_number', 'pool_status', 'close_datetime', 'locked_at']),
+                'standings' => $standings,
             ],
         ]);
     }

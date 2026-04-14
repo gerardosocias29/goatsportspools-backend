@@ -15,12 +15,17 @@ class PlayoffBracket extends Model
         'bracket_name',
         'bracket_index',
         'status',
+        'is_paid',
+        'paid_at',
+        'paid_by_admin_id',
         'finalized_at',
         'total_points',
     ];
 
     protected $casts = [
         'finalized_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'is_paid' => 'boolean',
     ];
 
     public function participant()

@@ -256,6 +256,10 @@ Route::group(['middleware' => 'auth:api'], function () {
         // Pool management by pool_number
         Route::post('/pools/{poolNumber}/lock', [PlayoffAdminController::class, 'lockPool']);
         Route::post('/pools/{poolNumber}/recalculate', [PlayoffAdminController::class, 'recalculatePool']);
+        Route::patch('/pools/{poolNumber}', [PlayoffAdminController::class, 'updatePool']);
+        Route::delete('/pools/{poolNumber}', [PlayoffAdminController::class, 'deletePool']);
+        Route::get('/pools/{poolNumber}/brackets', [PlayoffAdminController::class, 'listPoolBrackets']);
+        Route::patch('/brackets/{bracketId}/paid', [PlayoffAdminController::class, 'toggleBracketPaid']);
 
         // Dynamic routes — more specific sub-paths first
         Route::post('/{id}/teams', [PlayoffAdminController::class, 'saveTeams']); // Save teams for a playoff
@@ -268,6 +272,8 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/{id}/global-standings', [PlayoffAdminController::class, 'globalStandings']); // Global standings across all pools
         Route::get('/{id}/standings/{poolId}', [PlayoffAdminController::class, 'poolStandings']); // Pool standings
         Route::get('/{id}', [PlayoffAdminController::class, 'showPlayoff']); // Show single playoff
+        Route::patch('/{id}', [PlayoffAdminController::class, 'updatePlayoff']); // Update playoff (name/year/status)
+        Route::delete('/{id}', [PlayoffAdminController::class, 'deletePlayoff']); // Archive playoff
     });
 
     // Admin Payout Routes (Superadmin only)
