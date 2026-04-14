@@ -164,7 +164,7 @@ class PlayoffPoolController extends Controller
                 $q->where('pool_id', $pool->id);
             })
             ->where('is_paid', true)
-            ->with(['participant.user:id,name,username,avatar,image_url', 'picks'])
+            ->with(['participant.user:id,name,username,avatar', 'picks'])
             ->orderByDesc('total_points')
             ->get()
             ->map(function ($b) {

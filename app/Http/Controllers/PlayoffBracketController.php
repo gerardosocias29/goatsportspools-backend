@@ -102,7 +102,7 @@ class PlayoffBracketController extends Controller
 
         $bracket = PlayoffBracket::where('id', $bracketId)
             ->with(['picks.pickedTeam:id,name,nickname,image_url,conference',
-                'participant.user:id,name,username,avatar,image_url'])
+                'participant.user:id,name,username,avatar'])
             ->firstOrFail();
 
         // Verify bracket belongs to this pool
@@ -130,7 +130,16 @@ class PlayoffBracketController extends Controller
             }
         }
 
-        return response()->json(['status' => true, 'data' => $bracket]);
+        // Include playoff seeds so the frontend can render the full bracket layout
+        $seeds = NbaPlayoffTeam::where('playoff_id', $pool->playoff_id)
+            ->with('team:id,name,nickname,image_url,conference')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $bracket,
+            'seeds' => $seeds,
+        ]);
     }
 
     /**
@@ -143,6 +152,10 @@ class PlayoffBracketController extends Controller
         if ($participant instanceof \Illuminate\Http\JsonResponse) return $participant;
 
         $bracket = PlayoffBracket::where('id', $bracketId)->where('participant_id', $participant->id)->firstOrFail();
+
+        if ($bracket->status === 'finalized') {
+            return response()->json(['status' => false, 'message' => 'Cannot rename a finalized bracket.'], 400);
+        }
 
         $request->validate(['bracket_name' => 'required|string|max:50']);
 
