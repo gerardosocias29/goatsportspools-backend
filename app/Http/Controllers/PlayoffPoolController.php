@@ -168,6 +168,7 @@ class PlayoffPoolController extends Controller
             ->orderByDesc('total_points')
             ->get()
             ->map(function ($b) {
+                $champPick = $b->picks->first(fn($p) => $p->pick_type === 'champion' || (int)$p->round === 4);
                 $rounds = $b->picks->groupBy('round')->map(function ($roundPicks) {
                     return [
                         'correct' => $roundPicks->filter(fn($pick) => $pick->base_points > 0)->count(),
@@ -186,6 +187,11 @@ class PlayoffPoolController extends Controller
                     'rounds' => $rounds,
                     'user' => $b->participant?->user,
                     'participant_id' => $b->participant_id,
+                    'champion' => $champPick && $champPick->pickedTeam ? [
+                        'nickname' => $champPick->pickedTeam->nickname,
+                        'image_url' => $champPick->pickedTeam->image_url,
+                        'conference' => $champPick->pickedTeam->conference,
+                    ] : null,
                 ];
             });
 
