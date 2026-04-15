@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, PlayoffAdminApplicationController, PlayoffPoolController, PlayoffBracketController, PlayoffAdminController, BannerController, SettingsController, DashboardController, PayoutController};
+use App\Http\Controllers\{AuthController, AuctionController, AuctionItemController, AuctionItemBidController, UserController, LeagueController, GameController, BetController, TeamController, ContactUsController, SquaresPoolController, SquaresPlayerController, GameRewardTypeController, CreditRequestController, SquaresAdminApplicationController, PlayoffAdminApplicationController, PlayoffPoolController, PlayoffBracketController, PlayoffAdminController, BannerController, SettingsController, DashboardController, PayoutController, SiteContentController};
 use Illuminate\Support\Facades\Artisan;
 use App\Events\NewBid;
 use App\CustomLibraries\PushNotification;
@@ -245,6 +245,12 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::post('/{id}/brackets/{bracketId}/finalize', [PlayoffBracketController::class, 'finalize']); // Finalize bracket
     });
 
+    // Admin Site Content (Superadmin only, enforced in controller)
+    Route::group(['prefix' => 'admin/site-content'], function () {
+        Route::get('/', [SiteContentController::class, 'index']);
+        Route::put('/{key}', [SiteContentController::class, 'update']);
+    });
+
     // Admin Playoff Routes (Superadmin only, enforced in controller)
     Route::group(['prefix' => 'admin/playoffs'], function () {
         // Static routes BEFORE dynamic
@@ -298,6 +304,9 @@ Route::get('/squares-pools/by-number/{poolNumber}', [SquaresPlayerController::cl
 
 // Playoff Pools Public Routes (No Auth Required)
 Route::get('/playoff-pools/by-number/{poolNumber}', [PlayoffPoolController::class, 'lookupByNumber']); // Lookup pool by number (public)
+
+// Site Content Public Routes (No Auth Required)
+Route::get('/site-content/{key}', [SiteContentController::class, 'show']);
 
 // Banners Public Route (No Auth Required)
 Route::get('/banners', [BannerController::class, 'index']); // Get active banners for display
