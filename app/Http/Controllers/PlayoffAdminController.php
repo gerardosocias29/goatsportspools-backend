@@ -554,9 +554,9 @@ class PlayoffAdminController extends Controller
      */
     public function lockPool($poolNumber)
     {
-        $this->requireAdmin();
-
         $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
+        $this->requirePoolOwnerOrSuperadmin($pool);
+
         $pool->update([
             'pool_status' => 'locked',
             'locked_at' => now(),
@@ -575,9 +575,8 @@ class PlayoffAdminController extends Controller
      */
     public function recalculatePool($poolNumber)
     {
-        $this->requireAdmin();
-
         $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
+        $this->requirePoolOwnerOrSuperadmin($pool);
 
         if (!$pool->playoff_id) {
             return response()->json(['status' => false, 'message' => 'Pool is not linked to a playoff year.'], 422);
@@ -665,9 +664,8 @@ class PlayoffAdminController extends Controller
      */
     public function updatePool(Request $request, $poolNumber)
     {
-        $this->requireAdmin();
-
         $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
+        $this->requirePoolOwnerOrSuperadmin($pool);
 
         $validator = Validator::make($request->all(), [
             'pool_name' => 'sometimes|string|max:150',
@@ -703,9 +701,8 @@ class PlayoffAdminController extends Controller
      */
     public function listPoolBrackets($poolNumber)
     {
-        $this->requireAdmin();
-
         $pool = PlayoffPool::where('pool_number', $poolNumber)->firstOrFail();
+        $this->requirePoolOwnerOrSuperadmin($pool);
 
         $brackets = \App\Models\PlayoffBracket::whereHas('participant', function ($q) use ($pool) {
             $q->where('pool_id', $pool->id);
@@ -726,7 +723,12 @@ class PlayoffAdminController extends Controller
      */
     public function toggleBracketPaid(Request $request, $bracketId)
     {
-        $this->requireAdmin();
+        $bracket = \App\Models\PlayoffBracket::with('participant.pool')->findOrFail($bracketId);
+        $pool = $bracket->participant?->pool;
+        if (!$pool) {
+            abort(404, 'Pool not found for this bracket.');
+        }
+        $this->requirePoolOwnerOrSuperadmin($pool);
 
         $validator = Validator::make($request->all(), [
             'is_paid' => 'required|boolean',
@@ -734,8 +736,6 @@ class PlayoffAdminController extends Controller
         if ($validator->fails()) {
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
-
-        $bracket = \App\Models\PlayoffBracket::findOrFail($bracketId);
 
         if ($request->boolean('is_paid')) {
             $bracket->update([
@@ -791,6 +791,22 @@ class PlayoffAdminController extends Controller
         $user = Auth::user();
         if (!$user || ($user->role_id !== 1 && $user->role_id !== 2 && !$user->is_playoff_admin)) {
             abort(403, 'Admin access required.');
+        }
+    }
+
+    /**
+     * Allow only the pool's commissioner (admin_id) or a superadmin (role_id=1).
+     */
+    private function requirePoolOwnerOrSuperadmin(PlayoffPool $pool): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401);
+        }
+        $isSuperadmin = $user->role_id === 1;
+        $isOwner = (int) $pool->admin_id === (int) $user->id;
+        if (!$isSuperadmin && !$isOwner) {
+            abort(403, 'Only the pool commissioner or a superadmin can manage this pool.');
         }
     }
 }
